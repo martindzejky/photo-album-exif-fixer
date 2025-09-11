@@ -42,13 +42,13 @@
 	<link rel="icon" href={favicon} />
 </svelte:head>
 
-<div class="min-h-screen grid grid-cols-[1fr_320px] gap-0">
-    <main class="p-6">
+<div class="h-screen grid grid-cols-[1fr_320px] gap-0 overflow-hidden">
+    <main class="p-6 overflow-y-auto">
         {@render children?.()}
     </main>
-    <aside class="border-l border-gray-200 p-4 bg-gray-50 flex flex-col">
+    <aside class="border-l border-gray-200 p-4 bg-gray-50 flex flex-col overflow-hidden">
         <h2 class="text-sm font-semibold text-gray-600 mb-2">Log</h2>
-        <div class="text-xs space-y-1 overflow-y-auto flex-1 max-h-screen" id="log-panel">
+        <div class="text-xs space-y-1 overflow-y-auto flex-1" id="log-panel">
             {#each logs as entry (entry.id)}
                 <div class="flex flex-col">
                     <div class="flex items-start gap-2">
