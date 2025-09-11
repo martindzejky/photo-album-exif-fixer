@@ -34,28 +34,35 @@
 	}
 </script>
 
-<div class="max-w-xl">
-	<h1 class="text-2xl font-semibold mb-4">Select root folder</h1>
-	<p class="text-sm text-gray-600 mb-6">
-		This app works locally in your browser. Choose the root folder containing your albums (immediate subfolders).
-	</p>
-	
-	{#if error}
-		<div class="mb-4 p-3 rounded bg-red-50 border border-red-200 text-red-700 text-sm">
-			{error}
-		</div>
-	{/if}
+<!-- Centered layout matching landing page -->
+<div class="min-h-full flex items-center justify-center px-6">
+  <div class="max-w-md text-center">
+    <h1 class="text-3xl font-bold text-gray-900 mb-6">
+      Select Root Folder
+    </h1>
+    
+    <p class="text-lg text-gray-600 mb-8 leading-relaxed">
+      Choose the folder containing your photo albums. Each subfolder should 
+      represent an album with a date in YYYYMMdd format.
+    </p>
+    
+    {#if error}
+      <div class="mb-6 p-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+        {error}
+      </div>
+    {/if}
 
-	<button 
-		class="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-		onclick={handleSelectFolder}
-		disabled={isSelecting}
-	>
-		{isSelecting ? 'Selecting...' : 'Pick folder'}
-	</button>
+    <button 
+      class="inline-block px-8 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+      onclick={handleSelectFolder}
+      disabled={isSelecting}
+    >
+      {isSelecting ? 'Selecting folder...' : 'Pick Folder'}
+    </button>
 
-	<p class="text-xs text-gray-500 mt-4">
-		<strong>Browser requirement:</strong> This app requires Chrome, Edge, or another Chromium-based browser for folder access.
-	</p>
+    <p class="text-xs text-gray-500 mt-6">
+      <strong>Browser requirement:</strong> Chrome, Edge, or another Chromium-based browser
+    </p>
+  </div>
 </div>
 
