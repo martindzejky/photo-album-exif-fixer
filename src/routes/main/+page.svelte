@@ -3,12 +3,14 @@
   import { goto } from '$app/navigation';
   import { fileSystemService } from '$lib/services/fileSystem';
   import { logger } from '$lib/services/logger';
-  import {
-    parseAlbumDate,
-    getImageFiles,
+  import { 
+    parseAlbumDate, 
+    getImageFiles, 
     checkForNestedDirectories,
-    type Album
+    isSupportedImageFile,
+    type Album 
   } from '$lib/services/albums';
+  import { albumStore } from '$lib/stores/albumStore';
 
   let albums: Album[] = $state([]);
   let isLoading = $state(false);
@@ -26,6 +28,20 @@
   });
 
   async function scanAlbums() {
+    const rootHandle = fileSystemService.getRootHandle();
+    if (!rootHandle) {
+      logger.error('No root folder handle available');
+      return;
+    }
+
+    // Check cache first
+    const cachedAlbums = albumStore.getAlbums(rootHandle.name);
+    if (cachedAlbums) {
+      albums = cachedAlbums;
+      logger.info(`Loaded ${albums.length} albums from cache`);
+      return;
+    }
+
     isLoading = true;
     error = '';
     albums = [];
@@ -40,17 +56,25 @@
         const parsedDate = parseAlbumDate(folderHandle.name);
         const imageFiles = await getImageFiles(folderHandle.handle);
         const nestedDirs = await checkForNestedDirectories(folderHandle.handle);
-
+        
+        // Count supported vs unsupported files
+        const supportedFiles = imageFiles.filter(file => isSupportedImageFile(file.name));
+        const unsupportedFiles = imageFiles.filter(file => !isSupportedImageFile(file.name));
+        
         const warnings: string[] = [];
-
+        
         if (!parsedDate.isValid) {
           warnings.push('Invalid album name format (expected YYYYMMdd)');
         }
-
+        
         if (nestedDirs.length > 0) {
           warnings.push(`Contains nested folders: ${nestedDirs.join(', ')}`);
         }
 
+        if (unsupportedFiles.length > 0) {
+          warnings.push(`${unsupportedFiles.length} unsupported file(s)`);
+        }
+        
         const album: Album = {
           handle: folderHandle.handle,
           name: folderHandle.name,
@@ -59,6 +83,10 @@
           isValidFormat: parsedDate.isValid,
           warnings,
           photoCount: imageFiles.length,
+          supportedPhotoCount: supportedFiles.length,
+          unsupportedPhotoCount: unsupportedFiles.length,
+          hasNestedDirectories: nestedDirs.length > 0,
+          nestedDirectoryNames: nestedDirs,
           status: 'unknown' // Will be determined when photos are analyzed
         };
 
@@ -80,7 +108,10 @@
       });
 
       logger.success(`Found ${albums.length} albums`);
-
+      
+      // Cache the albums data
+      albumStore.setAlbums(albums, rootHandle.name);
+      
       // Album thumbnails removed for performance - only show in detail view
 
     } catch (err) {
@@ -155,24 +186,55 @@
         >
           <div class="flex items-start justify-between">
             <div class="flex-1">
-              <div class="flex items-center gap-2 mb-1">
-                <h3 class="font-medium">{album.name}</h3>
-                <span class="px-2 py-1 text-xs rounded {getStatusBadge(album).color}">
-                  {getStatusBadge(album).text}
-                </span>
+              <div class="mb-3">
+                <h3 class="font-medium text-base mb-1">{album.name}</h3>
+                <p class="text-sm {album.isValidFormat ? 'text-gray-600' : 'text-red-600'}">
+                  {formatAlbumDate(album.parsedDate)}
+                </p>
               </div>
 
-              <p class="text-sm {getStatusColor(album)} mb-2">
-                {formatAlbumDate(album.parsedDate)}
-              </p>
+              <!-- Status indicators -->
+              <div class="space-y-2">
+                <!-- Name validity -->
+                <div class="flex items-center gap-2 text-xs">
+                  <span class="w-2 h-2 rounded-full {album.isValidFormat ? 'bg-green-500' : 'bg-red-500'}"></span>
+                  <span class="{album.isValidFormat ? 'text-green-700' : 'text-red-700'}">
+                    {album.isValidFormat ? 'Valid name format' : 'Invalid name format'}
+                  </span>
+                </div>
 
-              <div class="text-xs text-gray-500">
-                {album.photoCount} photos
+                <!-- Nested directories warning -->
+                <div class="flex items-center gap-2 text-xs">
+                  <span class="w-2 h-2 rounded-full {album.hasNestedDirectories ? 'bg-yellow-500' : 'bg-green-500'}"></span>
+                  <span class="{album.hasNestedDirectories ? 'text-yellow-700' : 'text-green-700'}">
+                    {album.hasNestedDirectories ? `${album.nestedDirectoryNames.length} nested folder(s)` : 'No nested folders'}
+                  </span>
+                </div>
+
+                <!-- Photo counts -->
+                <div class="flex items-center gap-2 text-xs">
+                  <span class="w-2 h-2 rounded-full {album.photoCount > 0 ? 'bg-blue-500' : 'bg-gray-400'}"></span>
+                  <span class="text-gray-700">
+                    {album.photoCount} photos ({album.supportedPhotoCount} supported, {album.unsupportedPhotoCount} unsupported)
+                  </span>
+                </div>
+
+                <!-- EXIF status (if analyzed) -->
+                {#if album.photoStatus}
+                  <div class="flex items-center gap-2 text-xs">
+                    <span class="w-2 h-2 rounded-full {album.photoStatus.incorrect > 0 ? 'bg-red-500' : 'bg-green-500'}"></span>
+                    <span class="{album.photoStatus.incorrect > 0 ? 'text-red-700' : 'text-green-700'}">
+                      {album.photoStatus.incorrect > 0 ? `${album.photoStatus.incorrect} photos need fixing` : 'All photos have correct dates'}
+                    </span>
+                  </div>
+                {/if}
               </div>
 
               {#if album.warnings.length > 0}
-                <div class="mt-2 text-xs text-yellow-700">
-                  ⚠️ {album.warnings.join('; ')}
+                <div class="mt-3 pt-2 border-t border-gray-200">
+                  <div class="text-xs text-yellow-700">
+                    ⚠️ {album.warnings.join('; ')}
+                  </div>
                 </div>
               {/if}
             </div>

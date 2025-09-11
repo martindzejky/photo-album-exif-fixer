@@ -8,7 +8,18 @@ export interface Album {
   isValidFormat: boolean;
   warnings: string[];
   photoCount: number;
+  supportedPhotoCount: number;
+  unsupportedPhotoCount: number;
+  hasNestedDirectories: boolean;
+  nestedDirectoryNames: string[];
   status: 'unknown' | 'correct' | 'mixed' | 'incorrect';
+  // Detailed status breakdown (will be populated when photos are analyzed)
+  photoStatus?: {
+    correct: number;
+    incorrect: number;
+    unknown: number;
+    unsupported: number;
+  };
 }
 
 export interface Photo {
