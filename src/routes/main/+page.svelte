@@ -69,12 +69,8 @@
           logger.warning(`Album ${folderHandle.name}`, warnings.join('; '));
         }
 
-        // Load thumbnails with a small delay to prevent overwhelming the browser
-        setTimeout(() => {
-          loadAlbumThumbnails(folderHandle.name).catch(() => {
-            // Silently ignore thumbnail loading errors
-          });
-        }, albums.length * 100); // Stagger loads by 100ms per album
+        // Load thumbnails immediately after the main scan completes
+        // We'll load them all at once but asynchronously
       }
       
       albums.sort((a, b) => {
@@ -85,6 +81,14 @@
       });
       
       logger.success(`Found ${albums.length} albums`);
+      
+      // Load thumbnails for all albums after the main scan is complete
+      logger.info('Loading album thumbnails...');
+      for (const album of albums) {
+        loadAlbumThumbnails(album.name).catch(() => {
+          // Silently ignore individual thumbnail loading errors
+        });
+      }
       
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
@@ -126,8 +130,12 @@
     }
 
     try {
+      logger.info(`Loading thumbnails for ${albumName}...`);
       const rootHandle = fileSystemService.getRootHandle();
-      if (!rootHandle) return;
+      if (!rootHandle) {
+        logger.warning(`No root handle for thumbnails: ${albumName}`);
+        return;
+      }
 
       // Find the album directory
       for await (const [name, entry] of rootHandle.entries()) {
@@ -136,27 +144,35 @@
           const firstThreeFiles = imageFiles.slice(0, 3);
           const thumbnailUrls: string[] = [];
           
+          logger.info(`Found ${firstThreeFiles.length} images for ${albumName} thumbnails`);
+          
           for (const fileHandle of firstThreeFiles) {
             try {
               const file = await fileHandle.getFile();
               if (file.type.startsWith('image/')) {
                 const url = URL.createObjectURL(file);
                 thumbnailUrls.push(url);
+                logger.info(`Created thumbnail URL for ${fileHandle.name}`);
               }
             } catch (err) {
-              // Silently ignore individual file errors
+              logger.warning(`Failed to create thumbnail for ${fileHandle.name}`, 
+                err instanceof Error ? err.message : 'Unknown error');
             }
           }
           
           if (thumbnailUrls.length > 0) {
             albumThumbnails.set(albumName, thumbnailUrls);
             albumThumbnails = albumThumbnails; // Trigger reactivity
+            logger.success(`Loaded ${thumbnailUrls.length} thumbnails for ${albumName}`);
+          } else {
+            logger.warning(`No thumbnails loaded for ${albumName}`);
           }
           break;
         }
       }
     } catch (err) {
-      // Silently ignore thumbnail loading errors
+      logger.error(`Error loading thumbnails for ${albumName}`, 
+        err instanceof Error ? err.message : 'Unknown error');
     }
   }
 </script>
