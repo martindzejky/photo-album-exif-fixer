@@ -21,6 +21,7 @@
   let photos: Photo[] = $state([]);
   let isLoading: boolean = $state(false);
   let error: string = $state('');
+  let photoUrls: Map<string, string> = $state(new Map());
 
   onMount(async () => {
     const rootHandle = fileSystemService.getRootHandle();
@@ -31,6 +32,13 @@
     }
 
     await loadAlbumPhotos();
+
+    // Cleanup object URLs on unmount
+    return () => {
+      for (const url of photoUrls.values()) {
+        URL.revokeObjectURL(url);
+      }
+    };
   });
 
   async function loadAlbumPhotos() {
@@ -124,6 +132,12 @@
           };
 
           photos.push(photo);
+
+          // Create object URL for image display
+          if (file.type.startsWith('image/')) {
+            const url = URL.createObjectURL(file);
+            photoUrls.set(fileHandle.name, url);
+          }
 
         } catch (err) {
           logger.error(`Error processing ${fileHandle.name}`, 
@@ -297,6 +311,17 @@
               </div>
             {/if}
           </div>
+
+          {#if photoUrls.has(photo.name)}
+            <div class="mt-3 pt-3 border-t border-gray-200">
+              <img 
+                src={photoUrls.get(photo.name)} 
+                alt={photo.name}
+                class="w-full h-auto rounded"
+                loading="lazy"
+              />
+            </div>
+          {/if}
 
           {#if photo.status === 'incorrect' && photo.isSupported}
             <div class="mt-3 pt-3 border-t border-gray-200">

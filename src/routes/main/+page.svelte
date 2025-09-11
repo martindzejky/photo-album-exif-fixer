@@ -13,6 +13,7 @@
   let albums: Album[] = $state([]);
   let isLoading = $state(false);
   let error = $state('');
+  let albumThumbnails: Map<string, string[]> = $state(new Map());
 
   onMount(async () => {
     const rootHandle = fileSystemService.getRootHandle();
@@ -66,6 +67,30 @@
         
         if (warnings.length > 0) {
           logger.warning(`Album ${folderHandle.name}`, warnings.join('; '));
+        }
+
+        // Load first 3 photos for thumbnails
+        try {
+          const firstThreeFiles = imageFiles.slice(0, 3);
+          const thumbnailUrls: string[] = [];
+          
+          for (const fileHandle of firstThreeFiles) {
+            try {
+              const file = await fileHandle.getFile();
+              if (file.type.startsWith('image/')) {
+                const url = URL.createObjectURL(file);
+                thumbnailUrls.push(url);
+              }
+            } catch (err) {
+              logger.warning(`Failed to load thumbnail for ${fileHandle.name}`);
+            }
+          }
+          
+          if (thumbnailUrls.length > 0) {
+            albumThumbnails.set(folderHandle.name, thumbnailUrls);
+          }
+        } catch (err) {
+          logger.warning(`Failed to load thumbnails for album ${folderHandle.name}`);
         }
       }
       
@@ -174,6 +199,21 @@
               Click to view
             </div>
           </div>
+          
+          {#if albumThumbnails.has(album.name)}
+            <div class="mt-4 pt-3 border-t border-gray-200">
+              <div class="flex gap-2 overflow-hidden">
+                {#each albumThumbnails.get(album.name) || [] as thumbnailUrl}
+                  <img 
+                    src={thumbnailUrl} 
+                    alt="Album preview"
+                    class="w-16 h-16 object-cover rounded flex-shrink-0"
+                    loading="lazy"
+                  />
+                {/each}
+              </div>
+            </div>
+          {/if}
         </div>
       {/each}
     </div>
