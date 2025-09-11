@@ -15,3 +15,5 @@ Check the docs for overviews and info about the latest way to use these:
 - https://tailwindcss.com
 
 Since the app is running locally only, there's no need for auth or any state management or any databases or anything similar. Just a pure simple local app and works with the local files only. I should be able to start the SvelteKit app and that's it.
+
+Use `pnpm`. Commit frequently.
