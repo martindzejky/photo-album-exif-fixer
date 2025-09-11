@@ -142,7 +142,10 @@
   {:else}
     <div class="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-4">
       {#each albums as album (album.name)}
-        <div class="border rounded-lg p-4 hover:border-blue-300 cursor-pointer transition-colors min-w-0">
+        <div 
+          class="border rounded-lg p-4 hover:border-blue-300 cursor-pointer transition-colors min-w-0"
+          onclick={() => goto(`/album/${encodeURIComponent(album.name)}`)}
+        >
           <div class="flex items-start justify-between">
             <div class="flex-1">
               <div class="flex items-center gap-2 mb-1">
