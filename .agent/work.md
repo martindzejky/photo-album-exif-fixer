@@ -1,3 +1,5 @@
+2025-09-11: removed album thumbnails from main view - too slow with many albums
+2025-09-11: album detail photos working, shows actual images with exif analysis
 2025-09-11: layout improvements: separate scroll areas, auto-fit grid albums
 2025-09-11: album scanning working, shows date parsing and warnings in grid
 2025-09-11: folder selection and logging working, fixed duplicate key errors

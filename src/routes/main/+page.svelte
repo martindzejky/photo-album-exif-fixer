@@ -13,7 +13,6 @@
   let albums: Album[] = $state([]);
   let isLoading = $state(false);
   let error = $state('');
-  let albumThumbnails = $state(new Map<string, string[]>());
 
   onMount(async () => {
     const rootHandle = fileSystemService.getRootHandle();
@@ -82,13 +81,7 @@
 
       logger.success(`Found ${albums.length} albums`);
 
-      // Load thumbnails for all albums after the main scan is complete
-      logger.info('Loading album thumbnails...');
-      for (const album of albums) {
-        loadAlbumThumbnails(album.name).catch(() => {
-          // Silently ignore individual thumbnail loading errors
-        });
-      }
+      // Album thumbnails removed for performance - only show in detail view
 
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
@@ -124,59 +117,7 @@
     return { text: 'OK', color: 'bg-green-100 text-green-800' };
   }
 
-  async function loadAlbumThumbnails(albumName: string) {
-    if (albumThumbnails.has(albumName)) {
-      return; // Already loaded
-    }
-
-    try {
-      logger.info(`Loading thumbnails for ${albumName}...`);
-      const rootHandle = fileSystemService.getRootHandle();
-      if (!rootHandle) {
-        logger.warning(`No root handle for thumbnails: ${albumName}`);
-        return;
-      }
-
-      // Find the album directory
-      for await (const [name, entry] of rootHandle.entries()) {
-        if (entry.kind === 'directory' && name === albumName) {
-          const imageFiles = await getImageFiles(entry);
-          const firstThreeFiles = imageFiles.slice(0, 3);
-          const thumbnailUrls: string[] = [];
-
-          logger.info(`Found ${firstThreeFiles.length} images for ${albumName} thumbnails`);
-
-          for (const fileHandle of firstThreeFiles) {
-            try {
-              const file = await fileHandle.getFile();
-              if (file.type.startsWith('image/')) {
-                const url = URL.createObjectURL(file);
-                thumbnailUrls.push(url);
-                logger.info(`Created thumbnail URL for ${fileHandle.name}`);
-              }
-            } catch (err) {
-              logger.warning(`Failed to create thumbnail for ${fileHandle.name}`,
-                err instanceof Error ? err.message : 'Unknown error');
-            }
-          }
-
-          if (thumbnailUrls.length > 0) {
-            // In Svelte 5, we need to reassign the entire Map for reactivity
-            const newThumbnails = new Map(albumThumbnails);
-            newThumbnails.set(albumName, thumbnailUrls);
-            albumThumbnails = newThumbnails;
-            logger.success(`Loaded ${thumbnailUrls.length} thumbnails for ${albumName}`);
-          } else {
-            logger.warning(`No thumbnails loaded for ${albumName}`);
-          }
-          break;
-        }
-      }
-    } catch (err) {
-      logger.error(`Error loading thumbnails for ${albumName}`,
-        err instanceof Error ? err.message : 'Unknown error');
-    }
-  }
+  // Album thumbnail loading removed for performance
 </script>
 
 <div class="w-full">
@@ -208,10 +149,9 @@
   {:else}
     <div class="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-4">
       {#each albums as album (album.name)}
-        <div
+        <div 
           class="border rounded-lg p-4 hover:border-blue-300 cursor-pointer transition-colors min-w-0"
           onclick={() => goto(`/album/${encodeURIComponent(album.name)}`)}
-          onmouseenter={() => loadAlbumThumbnails(album.name)}
         >
           <div class="flex items-start justify-between">
             <div class="flex-1">
@@ -242,26 +182,7 @@
             </div>
           </div>
 
-          <div class="mt-4 pt-3 border-t border-gray-200">
-            {#if albumThumbnails.has(album.name)}
-              <div class="flex gap-2 overflow-hidden">
-                {#each albumThumbnails.get(album.name) || [] as thumbnailUrl}
-                  <img
-                    src={thumbnailUrl}
-                    alt="Album preview"
-                    class="w-16 h-16 object-cover rounded flex-shrink-0"
-                    loading="lazy"
-                  />
-                {/each}
-              </div>
-            {:else}
-              <div class="flex gap-2">
-                {#each Array(3) as _, i}
-                  <div class="w-16 h-16 bg-gray-200 rounded animate-pulse flex-shrink-0"></div>
-                {/each}
-              </div>
-            {/if}
-          </div>
+          <!-- Album thumbnails removed for performance -->
         </div>
       {/each}
     </div>

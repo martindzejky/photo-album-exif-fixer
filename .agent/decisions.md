@@ -40,4 +40,5 @@ Validation & rules
 
 Open items
 
+- Album thumbnails: Removed from main view for performance. Future: implement lazy/virtualized loading or single thumbnail per album on hover only.
 - None pending. Proceed with the above unless new preferences arise.
