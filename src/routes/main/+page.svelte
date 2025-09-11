@@ -3,17 +3,17 @@
   import { goto } from '$app/navigation';
   import { fileSystemService } from '$lib/services/fileSystem';
   import { logger } from '$lib/services/logger';
-  import { 
-    parseAlbumDate, 
-    getImageFiles, 
+  import {
+    parseAlbumDate,
+    getImageFiles,
     checkForNestedDirectories,
-    type Album 
+    type Album
   } from '$lib/services/albums';
 
   let albums: Album[] = $state([]);
   let isLoading = $state(false);
   let error = $state('');
-  let albumThumbnails: Map<string, string[]> = $state(new Map());
+  let albumThumbnails = $state(new Map<string, string[]>());
 
   onMount(async () => {
     const rootHandle = fileSystemService.getRootHandle();
@@ -34,24 +34,24 @@
     try {
       logger.info('Scanning albums...');
       const folderHandles = await fileSystemService.getAlbums();
-      
+
       for (const folderHandle of folderHandles) {
         logger.info(`Processing album: ${folderHandle.name}`);
-        
+
         const parsedDate = parseAlbumDate(folderHandle.name);
         const imageFiles = await getImageFiles(folderHandle.handle);
         const nestedDirs = await checkForNestedDirectories(folderHandle.handle);
-        
+
         const warnings: string[] = [];
-        
+
         if (!parsedDate.isValid) {
           warnings.push('Invalid album name format (expected YYYYMMdd)');
         }
-        
+
         if (nestedDirs.length > 0) {
           warnings.push(`Contains nested folders: ${nestedDirs.join(', ')}`);
         }
-        
+
         const album: Album = {
           handle: folderHandle.handle,
           name: folderHandle.name,
@@ -62,9 +62,9 @@
           photoCount: imageFiles.length,
           status: 'unknown' // Will be determined when photos are analyzed
         };
-        
+
         albums.push(album);
-        
+
         if (warnings.length > 0) {
           logger.warning(`Album ${folderHandle.name}`, warnings.join('; '));
         }
@@ -72,16 +72,16 @@
         // Load thumbnails immediately after the main scan completes
         // We'll load them all at once but asynchronously
       }
-      
+
       albums.sort((a, b) => {
         if (a.parsedDate && b.parsedDate) {
           return b.parsedDate.getTime() - a.parsedDate.getTime(); // newest first
         }
         return a.name.localeCompare(b.name);
       });
-      
+
       logger.success(`Found ${albums.length} albums`);
-      
+
       // Load thumbnails for all albums after the main scan is complete
       logger.info('Loading album thumbnails...');
       for (const album of albums) {
@@ -89,7 +89,7 @@
           // Silently ignore individual thumbnail loading errors
         });
       }
-      
+
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       error = message;
@@ -143,9 +143,9 @@
           const imageFiles = await getImageFiles(entry);
           const firstThreeFiles = imageFiles.slice(0, 3);
           const thumbnailUrls: string[] = [];
-          
+
           logger.info(`Found ${firstThreeFiles.length} images for ${albumName} thumbnails`);
-          
+
           for (const fileHandle of firstThreeFiles) {
             try {
               const file = await fileHandle.getFile();
@@ -155,14 +155,16 @@
                 logger.info(`Created thumbnail URL for ${fileHandle.name}`);
               }
             } catch (err) {
-              logger.warning(`Failed to create thumbnail for ${fileHandle.name}`, 
+              logger.warning(`Failed to create thumbnail for ${fileHandle.name}`,
                 err instanceof Error ? err.message : 'Unknown error');
             }
           }
-          
+
           if (thumbnailUrls.length > 0) {
-            albumThumbnails.set(albumName, thumbnailUrls);
-            albumThumbnails = albumThumbnails; // Trigger reactivity
+            // In Svelte 5, we need to reassign the entire Map for reactivity
+            const newThumbnails = new Map(albumThumbnails);
+            newThumbnails.set(albumName, thumbnailUrls);
+            albumThumbnails = newThumbnails;
             logger.success(`Loaded ${thumbnailUrls.length} thumbnails for ${albumName}`);
           } else {
             logger.warning(`No thumbnails loaded for ${albumName}`);
@@ -171,7 +173,7 @@
         }
       }
     } catch (err) {
-      logger.error(`Error loading thumbnails for ${albumName}`, 
+      logger.error(`Error loading thumbnails for ${albumName}`,
         err instanceof Error ? err.message : 'Unknown error');
     }
   }
@@ -180,7 +182,7 @@
 <div class="w-full">
   <div class="flex items-center justify-between mb-6">
     <h1 class="text-2xl font-semibold">Albums</h1>
-    <button 
+    <button
       class="px-3 py-1 text-sm rounded bg-gray-100 hover:bg-gray-200"
       onclick={scanAlbums}
       disabled={isLoading}
@@ -206,7 +208,7 @@
   {:else}
     <div class="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-4">
       {#each albums as album (album.name)}
-        <div 
+        <div
           class="border rounded-lg p-4 hover:border-blue-300 cursor-pointer transition-colors min-w-0"
           onclick={() => goto(`/album/${encodeURIComponent(album.name)}`)}
           onmouseenter={() => loadAlbumThumbnails(album.name)}
@@ -219,33 +221,33 @@
                   {getStatusBadge(album).text}
                 </span>
               </div>
-              
+
               <p class="text-sm {getStatusColor(album)} mb-2">
                 {formatAlbumDate(album.parsedDate)}
               </p>
-              
+
               <div class="text-xs text-gray-500">
                 {album.photoCount} photos
               </div>
-              
+
               {#if album.warnings.length > 0}
                 <div class="mt-2 text-xs text-yellow-700">
                   ⚠️ {album.warnings.join('; ')}
                 </div>
               {/if}
             </div>
-            
+
             <div class="text-right text-xs text-gray-400">
               Click to view
             </div>
           </div>
-          
+
           <div class="mt-4 pt-3 border-t border-gray-200">
             {#if albumThumbnails.has(album.name)}
               <div class="flex gap-2 overflow-hidden">
                 {#each albumThumbnails.get(album.name) || [] as thumbnailUrl}
-                  <img 
-                    src={thumbnailUrl} 
+                  <img
+                    src={thumbnailUrl}
                     alt="Album preview"
                     class="w-16 h-16 object-cover rounded flex-shrink-0"
                     loading="lazy"
