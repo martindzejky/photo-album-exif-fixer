@@ -1,5 +1,25 @@
-<h1 class="text-2xl font-semibold mb-4">Old Photos App</h1>
-<nav class="space-x-4 text-blue-700 underline">
-	<a href="/select">Select folder</a>
-	<a href="/main">Main</a>
-</nav>
+<!-- Landing page with centered content -->
+<div class="min-h-full flex items-center justify-center px-6">
+  <div class="max-w-md text-center">
+    <h1 class="text-4xl font-bold text-gray-900 mb-6">
+      Photo Album EXIF Fixer
+    </h1>
+    
+    <p class="text-lg text-gray-600 mb-8 leading-relaxed">
+      Organize your photo albums and fix EXIF dates with ease. 
+      Select a folder containing your albums and let the app verify 
+      that your photos have the correct capture dates.
+    </p>
+    
+    <a 
+      href="/select" 
+      class="inline-block px-8 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+    >
+      Start Now
+    </a>
+    
+    <p class="text-xs text-gray-500 mt-6">
+      Works locally in your browser • Requires Chrome or Edge
+    </p>
+  </div>
+</div>
