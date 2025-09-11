@@ -1,6 +1,7 @@
 // Simple logging service for the app
 
 export interface LogEntry {
+	id: string;
 	timestamp: Date;
 	level: 'info' | 'warning' | 'error' | 'success';
 	message: string;
@@ -10,12 +11,29 @@ export interface LogEntry {
 class LoggerService {
 	private logs: LogEntry[] = [];
 	private listeners: ((logs: LogEntry[]) => void)[] = [];
+	private idCounter = 0;
+
+	constructor() {
+		// Set up global error handler
+		if (typeof window !== 'undefined') {
+			window.addEventListener('error', (event) => {
+				this.error('Uncaught error occurred', 
+					`${event.error?.message || event.message}. Check browser console for details.`);
+			});
+
+			window.addEventListener('unhandledrejection', (event) => {
+				this.error('Unhandled promise rejection', 
+					`${event.reason}. Check browser console for details.`);
+			});
+		}
+	}
 
 	/**
 	 * Add a log entry
 	 */
 	log(level: LogEntry['level'], message: string, details?: string): void {
 		const entry: LogEntry = {
+			id: `log-${++this.idCounter}`,
 			timestamp: new Date(),
 			level,
 			message,

@@ -49,7 +49,7 @@
     <aside class="border-l border-gray-200 p-4 bg-gray-50 flex flex-col">
         <h2 class="text-sm font-semibold text-gray-600 mb-2">Log</h2>
         <div class="text-xs space-y-1 overflow-y-auto flex-1 max-h-screen" id="log-panel">
-            {#each logs.slice(-20) as entry (entry.timestamp.getTime())}
+            {#each logs.slice(-20) as entry (entry.id)}
                 <div class="flex flex-col">
                     <div class="flex items-start gap-2">
                         <span class="text-gray-400 shrink-0">{formatTime(entry.timestamp)}</span>
