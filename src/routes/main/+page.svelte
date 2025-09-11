@@ -140,7 +140,7 @@
       No albums found. Make sure your folder contains subdirectories.
     </div>
   {:else}
-    <div class="grid gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {#each albums as album (album.name)}
         <div class="border rounded-lg p-4 hover:border-blue-300 cursor-pointer transition-colors">
           <div class="flex items-start justify-between">
