@@ -69,29 +69,8 @@
           logger.warning(`Album ${folderHandle.name}`, warnings.join('; '));
         }
 
-        // Load first 3 photos for thumbnails
-        try {
-          const firstThreeFiles = imageFiles.slice(0, 3);
-          const thumbnailUrls: string[] = [];
-          
-          for (const fileHandle of firstThreeFiles) {
-            try {
-              const file = await fileHandle.getFile();
-              if (file.type.startsWith('image/')) {
-                const url = URL.createObjectURL(file);
-                thumbnailUrls.push(url);
-              }
-            } catch (err) {
-              logger.warning(`Failed to load thumbnail for ${fileHandle.name}`);
-            }
-          }
-          
-          if (thumbnailUrls.length > 0) {
-            albumThumbnails.set(folderHandle.name, thumbnailUrls);
-          }
-        } catch (err) {
-          logger.warning(`Failed to load thumbnails for album ${folderHandle.name}`);
-        }
+        // Skip thumbnail loading during initial scan to prevent freezing
+        // Thumbnails will be loaded on-demand later
       }
       
       albums.sort((a, b) => {
@@ -136,6 +115,46 @@
     }
     return { text: 'OK', color: 'bg-green-100 text-green-800' };
   }
+
+  async function loadAlbumThumbnails(albumName: string) {
+    if (albumThumbnails.has(albumName)) {
+      return; // Already loaded
+    }
+
+    try {
+      const rootHandle = fileSystemService.getRootHandle();
+      if (!rootHandle) return;
+
+      // Find the album directory
+      for await (const [name, entry] of rootHandle.entries()) {
+        if (entry.kind === 'directory' && name === albumName) {
+          const imageFiles = await getImageFiles(entry);
+          const firstThreeFiles = imageFiles.slice(0, 3);
+          const thumbnailUrls: string[] = [];
+          
+          for (const fileHandle of firstThreeFiles) {
+            try {
+              const file = await fileHandle.getFile();
+              if (file.type.startsWith('image/')) {
+                const url = URL.createObjectURL(file);
+                thumbnailUrls.push(url);
+              }
+            } catch (err) {
+              // Silently ignore individual file errors
+            }
+          }
+          
+          if (thumbnailUrls.length > 0) {
+            albumThumbnails.set(albumName, thumbnailUrls);
+            albumThumbnails = albumThumbnails; // Trigger reactivity
+          }
+          break;
+        }
+      }
+    } catch (err) {
+      // Silently ignore thumbnail loading errors
+    }
+  }
 </script>
 
 <div class="w-full">
@@ -170,6 +189,7 @@
         <div 
           class="border rounded-lg p-4 hover:border-blue-300 cursor-pointer transition-colors min-w-0"
           onclick={() => goto(`/album/${encodeURIComponent(album.name)}`)}
+          onmouseenter={() => loadAlbumThumbnails(album.name)}
         >
           <div class="flex items-start justify-between">
             <div class="flex-1">
