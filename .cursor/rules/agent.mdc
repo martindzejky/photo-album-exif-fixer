@@ -1,0 +1,9 @@
+---
+description: Instructions for the agent
+globs:
+alwaysApply: true
+---
+
+Use `./.agent/` as a scratchpad for jotting down toughts, TODO lists, decisions, etc. Anything you want to remember for later. Use `work.md` to keep a simple work log, keep it concise and latest entries at the top.
+
+Commit early and commit frequently. Keep commits simple, single sentence, all lowercase, i.e. `init` or `add main svelte page` or `write photo exif data`. This applies both to your work log and the git.

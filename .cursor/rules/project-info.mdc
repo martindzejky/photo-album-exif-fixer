@@ -1,0 +1,13 @@
+---
+description: Global project information
+globs:
+alwaysApply: true
+---
+
+This is a throwaway super simple app for managing photo files in a user-selected folder. The user selects the root folder. It is assumed that this folder then contains subfolders and photo files inside of them. Each subfolder represents an album, its name always starts with a date: RRRRMMdd.
+
+The goal of the app is to display all these albums and photos inside. It must then verify the EXIF info in each photo file and display whether it matches the date of the album. The whole purpose of this app is to be able to see whether the photo files have the correct EXIT data in them. The photo album names (subfolder names) are the source of truth.
+
+The app displays the current EXIF data of the photo files and groups them in the albums. Each album displays its parsed date. Then each album and photo displays a status based on whether the photo files EXIF data matches the album (is correct) or not. I should then be able to select whole albums and start the fixing procedure – the app displays in detail what changes are done and fixes/adjusts the EXIT capture date to match the album.
+
+The app should always display detailed explanations and details about what it is doing or what it is about to do. There should be a detail log, like running a command in the console, so after clicking on the fix button, I can see exactly what has been done.

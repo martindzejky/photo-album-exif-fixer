@@ -1,0 +1,17 @@
+---
+description: Project tech and libs
+globs:
+alwaysApply: true
+---
+
+This simple project only needs to run locally on my Mac. It should allow me to pick the root folder when it starts and works with them for the rest of the lifecycle, until reloaded or restarted.
+
+It is a simple Svelte+SvelteKit app using the most modern technologies and best practices. For styling it's using Tailwind CSS, also using the latest version and methodologies.
+
+Check the docs for overviews and info about the latest way to use these:
+
+- https://svelte.dev/docs/svelte/overview
+- https://svelte.dev/docs/kit/introduction
+- https://tailwindcss.com
+
+Since the app is running locally only, there's no need for auth or any state management or any databases or anything similar. Just a pure simple local app and works with the local files only. I should be able to start the SvelteKit app and that's it.
