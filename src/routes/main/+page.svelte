@@ -94,9 +94,11 @@
 
         albums.push(album);
 
-        // Quick EXIF analysis for first few supported photos to get status
+        // Quick EXIF analysis for random sample of supported photos to get status
         if (parsedDate.isValid && supportedFiles.length > 0) {
-          analyzeAlbumExifStatus(album, supportedFiles.slice(0, 3)).catch(() => {
+          const sampleSize = Math.min(9, supportedFiles.length);
+          const randomSample = getRandomSample(supportedFiles, sampleSize);
+          analyzeAlbumExifStatus(album, randomSample).catch(() => {
             // Silently ignore EXIF analysis errors for quick scan
           });
         }
@@ -159,6 +161,27 @@
 
   // Album thumbnail loading removed for performance
   
+  function getRandomSample<T>(array: T[], sampleSize: number): T[] {
+    const shuffled = [...array].sort(() => 0.5 - Math.random());
+    return shuffled.slice(0, sampleSize);
+  }
+
+  function getAlbumBorderColor(album: Album): string {
+    // Red border for serious issues
+    if (!album.isValidFormat || (album.photoStatus && album.photoStatus.incorrect > 0)) {
+      return 'border-red-300 hover:border-red-400';
+    }
+    
+    // Yellow border for warnings
+    if (album.hasNestedDirectories || album.unsupportedPhotoCount > 0 || 
+        (album.photoStatus && album.photoStatus.unknown > 0)) {
+      return 'border-yellow-300 hover:border-yellow-400';
+    }
+    
+    // Default border
+    return 'border-gray-200 hover:border-blue-300';
+  }
+  
   async function analyzeAlbumExifStatus(album: Album, sampleFiles: FileSystemFileHandle[]) {
     if (!album.parsedDate) return;
 
@@ -199,7 +222,7 @@
         // Also update cache
         albumStore.updateAlbum(album.name, { photoStatus });
         
-        logger.info(`EXIF analysis for ${album.name}: ${photoStatus.correct} correct, ${photoStatus.incorrect} incorrect, ${photoStatus.unknown} unknown`);
+        logger.info(`EXIF analysis for ${album.name} (${sampleFiles.length} photos sampled): ${photoStatus.correct} correct, ${photoStatus.incorrect} incorrect, ${photoStatus.unknown} unknown`);
       }
     } catch (err) {
       logger.warning(`Failed to analyze EXIF for ${album.name}`, 
@@ -238,7 +261,7 @@
     <div class="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-4">
       {#each albums as album (album.name)}
         <div 
-          class="border rounded-lg p-4 hover:border-blue-300 cursor-pointer transition-colors min-w-0"
+          class="border rounded-lg p-4 cursor-pointer transition-colors min-w-0 {getAlbumBorderColor(album)}"
           onclick={() => goto(`/album/${encodeURIComponent(album.name)}`)}
         >
           <div class="flex items-start justify-between">
