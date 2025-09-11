@@ -8,8 +8,10 @@
     getImageFiles, 
     checkForNestedDirectories,
     isSupportedImageFile,
+    datesMatch,
     type Album 
   } from '$lib/services/albums';
+  import { readExifData, getBestExifDate } from '$lib/services/exif';
   import { albumStore } from '$lib/stores/albumStore';
 
   let albums: Album[] = $state([]);
@@ -92,6 +94,13 @@
 
         albums.push(album);
 
+        // Quick EXIF analysis for first few supported photos to get status
+        if (parsedDate.isValid && supportedFiles.length > 0) {
+          analyzeAlbumExifStatus(album, supportedFiles.slice(0, 3)).catch(() => {
+            // Silently ignore EXIF analysis errors for quick scan
+          });
+        }
+
         if (warnings.length > 0) {
           logger.warning(`Album ${folderHandle.name}`, warnings.join('; '));
         }
@@ -149,6 +158,54 @@
   }
 
   // Album thumbnail loading removed for performance
+  
+  async function analyzeAlbumExifStatus(album: Album, sampleFiles: FileSystemFileHandle[]) {
+    if (!album.parsedDate) return;
+
+    try {
+      const photoStatus = {
+        correct: 0,
+        incorrect: 0,
+        unknown: 0,
+        unsupported: 0
+      };
+
+      for (const fileHandle of sampleFiles) {
+        try {
+          const file = await fileHandle.getFile();
+          const exifData = await readExifData(file);
+          const exifDate = getBestExifDate(exifData);
+
+          if (exifDate) {
+            if (datesMatch(album.parsedDate, exifDate)) {
+              photoStatus.correct++;
+            } else {
+              photoStatus.incorrect++;
+            }
+          } else {
+            photoStatus.unknown++;
+          }
+        } catch (err) {
+          photoStatus.unknown++;
+        }
+      }
+
+      // Update the album in the albums array
+      const albumIndex = albums.findIndex(a => a.name === album.name);
+      if (albumIndex !== -1) {
+        albums[albumIndex] = { ...albums[albumIndex], photoStatus };
+        albums = [...albums]; // Trigger reactivity
+        
+        // Also update cache
+        albumStore.updateAlbum(album.name, { photoStatus });
+        
+        logger.info(`EXIF analysis for ${album.name}: ${photoStatus.correct} correct, ${photoStatus.incorrect} incorrect, ${photoStatus.unknown} unknown`);
+      }
+    } catch (err) {
+      logger.warning(`Failed to analyze EXIF for ${album.name}`, 
+        err instanceof Error ? err.message : 'Unknown error');
+    }
+  }
 </script>
 
 <div class="w-full">
@@ -222,10 +279,21 @@
                 <!-- EXIF status (if analyzed) -->
                 {#if album.photoStatus}
                   <div class="flex items-center gap-2 text-xs">
-                    <span class="w-2 h-2 rounded-full {album.photoStatus.incorrect > 0 ? 'bg-red-500' : 'bg-green-500'}"></span>
-                    <span class="{album.photoStatus.incorrect > 0 ? 'text-red-700' : 'text-green-700'}">
-                      {album.photoStatus.incorrect > 0 ? `${album.photoStatus.incorrect} photos need fixing` : 'All photos have correct dates'}
+                    <span class="w-2 h-2 rounded-full {album.photoStatus.incorrect > 0 ? 'bg-red-500' : album.photoStatus.unknown > 0 ? 'bg-yellow-500' : 'bg-green-500'}"></span>
+                    <span class="{album.photoStatus.incorrect > 0 ? 'text-red-700' : album.photoStatus.unknown > 0 ? 'text-yellow-700' : 'text-green-700'}">
+                      {#if album.photoStatus.incorrect > 0}
+                        Sample: {album.photoStatus.incorrect} incorrect EXIF dates
+                      {:else if album.photoStatus.unknown > 0}
+                        Sample: {album.photoStatus.unknown} photos missing EXIF
+                      {:else}
+                        Sample: All photos have correct dates
+                      {/if}
                     </span>
+                  </div>
+                {:else if album.supportedPhotoCount > 0 && album.isValidFormat}
+                  <div class="flex items-center gap-2 text-xs">
+                    <span class="w-2 h-2 rounded-full bg-gray-400 animate-pulse"></span>
+                    <span class="text-gray-500">Analyzing EXIF data...</span>
                   </div>
                 {/if}
               </div>
