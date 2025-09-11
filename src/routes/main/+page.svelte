@@ -69,8 +69,12 @@
           logger.warning(`Album ${folderHandle.name}`, warnings.join('; '));
         }
 
-        // Skip thumbnail loading during initial scan to prevent freezing
-        // Thumbnails will be loaded on-demand later
+        // Load thumbnails with a small delay to prevent overwhelming the browser
+        setTimeout(() => {
+          loadAlbumThumbnails(folderHandle.name).catch(() => {
+            // Silently ignore thumbnail loading errors
+          });
+        }, albums.length * 100); // Stagger loads by 100ms per album
       }
       
       albums.sort((a, b) => {
@@ -220,8 +224,8 @@
             </div>
           </div>
           
-          {#if albumThumbnails.has(album.name)}
-            <div class="mt-4 pt-3 border-t border-gray-200">
+          <div class="mt-4 pt-3 border-t border-gray-200">
+            {#if albumThumbnails.has(album.name)}
               <div class="flex gap-2 overflow-hidden">
                 {#each albumThumbnails.get(album.name) || [] as thumbnailUrl}
                   <img 
@@ -232,8 +236,14 @@
                   />
                 {/each}
               </div>
-            </div>
-          {/if}
+            {:else}
+              <div class="flex gap-2">
+                {#each Array(3) as _, i}
+                  <div class="w-16 h-16 bg-gray-200 rounded animate-pulse flex-shrink-0"></div>
+                {/each}
+              </div>
+            {/if}
+          </div>
         </div>
       {/each}
     </div>
