@@ -137,6 +137,17 @@ export function categorizePhotoDate(
 }
 
 /**
+ * Format date as "Month DD, YYYY" (e.g., "October 27, 2024")
+ */
+export function formatDisplayDate(date: Date): string {
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+}
+
+/**
  * Get supported image file extensions
  */
 export function getSupportedImageExtensions(): string[] {

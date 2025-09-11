@@ -10,6 +10,7 @@
     isSupportedImageFile,
     datesMatch,
     categorizePhotoDate,
+    formatDisplayDate,
     type Album 
   } from '$lib/services/albums';
   import { readExifData, getBestExifDate } from '$lib/services/exif';

@@ -10,6 +10,7 @@
     getImageFiles, 
     datesMatch,
     isSupportedImageFile,
+    formatDisplayDate,
     type Photo 
   } from '$lib/services/albums';
 
@@ -96,7 +97,7 @@
               exifDate = getBestExifDate(exifData);
               
               if (exifDate) {
-                exifDateString = exifDate.toLocaleString();
+                exifDateString = formatDisplayDate(exifDate);
               } else {
                 warnings.push('No EXIF date found');
               }

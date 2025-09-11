@@ -6,11 +6,20 @@
 
 	let { children } = $props();
 	let logs: LogEntry[] = $state([]);
+	let autoScrollLogs = $state(true);
+	let logContainer: HTMLElement;
 
 	onMount(() => {
 		// Subscribe to log updates
 		const unsubscribe = logger.subscribe((newLogs) => {
 			logs = newLogs;
+			
+			// Auto-scroll to bottom if enabled
+			if (autoScrollLogs && logContainer) {
+				setTimeout(() => {
+					logContainer.scrollTop = logContainer.scrollHeight;
+				}, 0);
+			}
 		});
 
 		// Initial log
@@ -47,8 +56,17 @@
         {@render children?.()}
     </main>
     <aside class="border-l border-gray-200 p-4 bg-gray-50 flex flex-col overflow-hidden">
-        <h2 class="text-sm font-semibold text-gray-600 mb-2">Log</h2>
-        <div class="text-xs space-y-1 overflow-y-auto flex-1" id="log-panel">
+        <div class="flex items-center justify-between mb-2">
+            <h2 class="text-sm font-semibold text-gray-600">Log</h2>
+            <button 
+                class="text-xs px-2 py-1 rounded {autoScrollLogs ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'} hover:bg-opacity-80 transition-colors"
+                onclick={() => autoScrollLogs = !autoScrollLogs}
+                title={autoScrollLogs ? 'Auto-scroll enabled' : 'Auto-scroll disabled'}
+            >
+                {autoScrollLogs ? '⬇️' : '⏸️'}
+            </button>
+        </div>
+        <div class="text-xs space-y-1 overflow-y-auto flex-1" bind:this={logContainer}>
             {#each logs as entry (entry.id)}
                 <div class="flex flex-col">
                     <div class="flex items-start gap-2">
