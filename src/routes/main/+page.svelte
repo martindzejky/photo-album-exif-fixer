@@ -9,6 +9,7 @@
     checkForNestedDirectories,
     isSupportedImageFile,
     datesMatch,
+    categorizePhotoDate,
     type Album 
   } from '$lib/services/albums';
   import { readExifData, getBestExifDate } from '$lib/services/exif';
@@ -94,12 +95,10 @@
 
         albums.push(album);
 
-        // Quick EXIF analysis for random sample of supported photos to get status
+        // Full EXIF analysis for ALL supported photos to get comprehensive status
         if (parsedDate.isValid && supportedFiles.length > 0) {
-          const sampleSize = Math.min(9, supportedFiles.length);
-          const randomSample = getRandomSample(supportedFiles, sampleSize);
-          analyzeAlbumExifStatus(album, randomSample).catch(() => {
-            // Silently ignore EXIF analysis errors for quick scan
+          analyzeAlbumExifStatus(album, supportedFiles).catch(() => {
+            // Silently ignore EXIF analysis errors for scan
           });
         }
 
@@ -168,13 +167,14 @@
 
   function getAlbumBorderColor(album: Album): string {
     // Red border for serious issues
-    if (!album.isValidFormat || (album.photoStatus && album.photoStatus.incorrect > 0)) {
+    if (!album.isValidFormat || 
+        (album.photoStatus && (album.photoStatus.futureDate > 0 || album.photoStatus.pastDate > 0))) {
       return 'border-red-300 hover:border-red-400';
     }
     
     // Yellow border for warnings
     if (album.hasNestedDirectories || album.unsupportedPhotoCount > 0 || 
-        (album.photoStatus && album.photoStatus.unknown > 0)) {
+        (album.photoStatus && album.photoStatus.missingExif > 0)) {
       return 'border-yellow-300 hover:border-yellow-400';
     }
     
@@ -182,34 +182,46 @@
     return 'border-gray-200 hover:border-blue-300';
   }
   
-  async function analyzeAlbumExifStatus(album: Album, sampleFiles: FileSystemFileHandle[]) {
+  async function analyzeAlbumExifStatus(album: Album, allFiles: FileSystemFileHandle[]) {
     if (!album.parsedDate) return;
 
     try {
       const photoStatus = {
         correct: 0,
         incorrect: 0,
-        unknown: 0,
-        unsupported: 0
+        futureDate: 0,
+        pastDate: 0,
+        missingExif: 0,
+        unsupported: 0,
+        totalAnalyzed: allFiles.length
       };
 
-      for (const fileHandle of sampleFiles) {
+      for (const fileHandle of allFiles) {
         try {
           const file = await fileHandle.getFile();
           const exifData = await readExifData(file);
           const exifDate = getBestExifDate(exifData);
 
-          if (exifDate) {
-            if (datesMatch(album.parsedDate, exifDate)) {
+          const category = categorizePhotoDate(album.parsedDate, exifDate);
+          
+          switch (category) {
+            case 'correct':
               photoStatus.correct++;
-            } else {
-              photoStatus.incorrect++;
-            }
-          } else {
-            photoStatus.unknown++;
+              break;
+            case 'futureDate':
+              photoStatus.futureDate++;
+              photoStatus.incorrect++; // Also count as incorrect
+              break;
+            case 'pastDate':
+              photoStatus.pastDate++;
+              photoStatus.incorrect++; // Also count as incorrect
+              break;
+            case 'missingExif':
+              photoStatus.missingExif++;
+              break;
           }
         } catch (err) {
-          photoStatus.unknown++;
+          photoStatus.missingExif++;
         }
       }
 
@@ -222,7 +234,7 @@
         // Also update cache
         albumStore.updateAlbum(album.name, { photoStatus });
         
-        logger.info(`EXIF analysis for ${album.name} (${sampleFiles.length} photos sampled): ${photoStatus.correct} correct, ${photoStatus.incorrect} incorrect, ${photoStatus.unknown} unknown`);
+        logger.info(`EXIF analysis for ${album.name} (${photoStatus.totalAnalyzed} photos): ${photoStatus.correct} correct, ${photoStatus.futureDate} future, ${photoStatus.pastDate} past, ${photoStatus.missingExif} missing EXIF`);
       }
     } catch (err) {
       logger.warning(`Failed to analyze EXIF for ${album.name}`, 
@@ -301,22 +313,50 @@
 
                 <!-- EXIF status (if analyzed) -->
                 {#if album.photoStatus}
-                  <div class="flex items-center gap-2 text-xs">
-                    <span class="w-2 h-2 rounded-full {album.photoStatus.incorrect > 0 ? 'bg-red-500' : album.photoStatus.unknown > 0 ? 'bg-yellow-500' : 'bg-green-500'}"></span>
-                    <span class="{album.photoStatus.incorrect > 0 ? 'text-red-700' : album.photoStatus.unknown > 0 ? 'text-yellow-700' : 'text-green-700'}">
-                      {#if album.photoStatus.incorrect > 0}
-                        Sample: {album.photoStatus.incorrect} incorrect EXIF dates
-                      {:else if album.photoStatus.unknown > 0}
-                        Sample: {album.photoStatus.unknown} photos missing EXIF
-                      {:else}
-                        Sample: All photos have correct dates
+                  <div class="space-y-1">
+                    <!-- Overall status -->
+                    <div class="flex items-center gap-2 text-xs">
+                      <span class="w-2 h-2 rounded-full {album.photoStatus.incorrect > 0 ? 'bg-red-500' : album.photoStatus.missingExif > 0 ? 'bg-yellow-500' : 'bg-green-500'}"></span>
+                      <span class="{album.photoStatus.incorrect > 0 ? 'text-red-700' : album.photoStatus.missingExif > 0 ? 'text-yellow-700' : 'text-green-700'} font-medium">
+                        {album.photoStatus.totalAnalyzed} photos analyzed
+                      </span>
+                    </div>
+                    
+                    <!-- Detailed breakdown -->
+                    <div class="text-xs text-gray-600 space-y-1 ml-4">
+                      {#if album.photoStatus.correct > 0}
+                        <div class="flex items-center gap-1">
+                          <span class="w-1 h-1 bg-green-500 rounded-full"></span>
+                          <span>{album.photoStatus.correct} correct dates</span>
+                        </div>
                       {/if}
-                    </span>
+                      
+                      {#if album.photoStatus.futureDate > 0}
+                        <div class="flex items-center gap-1">
+                          <span class="w-1 h-1 bg-orange-500 rounded-full"></span>
+                          <span class="text-orange-700">{album.photoStatus.futureDate} photos taken after album date</span>
+                        </div>
+                      {/if}
+                      
+                      {#if album.photoStatus.pastDate > 0}
+                        <div class="flex items-center gap-1">
+                          <span class="w-1 h-1 bg-purple-500 rounded-full"></span>
+                          <span class="text-purple-700">{album.photoStatus.pastDate} photos taken before album date</span>
+                        </div>
+                      {/if}
+                      
+                      {#if album.photoStatus.missingExif > 0}
+                        <div class="flex items-center gap-1">
+                          <span class="w-1 h-1 bg-yellow-500 rounded-full"></span>
+                          <span class="text-yellow-700">{album.photoStatus.missingExif} missing EXIF dates</span>
+                        </div>
+                      {/if}
+                    </div>
                   </div>
                 {:else if album.supportedPhotoCount > 0 && album.isValidFormat}
                   <div class="flex items-center gap-2 text-xs">
                     <span class="w-2 h-2 rounded-full bg-gray-400 animate-pulse"></span>
-                    <span class="text-gray-500">Analyzing EXIF data...</span>
+                    <span class="text-gray-500">Analyzing all {album.supportedPhotoCount} photos...</span>
                   </div>
                 {/if}
               </div>

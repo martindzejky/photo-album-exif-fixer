@@ -15,10 +15,13 @@ export interface Album {
   status: 'unknown' | 'correct' | 'mixed' | 'incorrect';
   // Detailed status breakdown (will be populated when photos are analyzed)
   photoStatus?: {
-    correct: number;
-    incorrect: number;
-    unknown: number;
-    unsupported: number;
+    correct: number;           // EXIF date matches album date exactly
+    incorrect: number;         // EXIF date doesn't match album date  
+    futureDate: number;        // EXIF date is after album date (photo taken later)
+    pastDate: number;          // EXIF date is before album date (photo taken earlier)
+    missingExif: number;       // No EXIF date found
+    unsupported: number;       // Non-JPG files
+    totalAnalyzed: number;     // Total photos analyzed
   };
 }
 
@@ -105,6 +108,32 @@ export function datesMatch(date1: Date | null, date2: Date | null): boolean {
     date1.getMonth() === date2.getMonth() &&
     date1.getDate() === date2.getDate()
   );
+}
+
+/**
+ * Compare photo date with album date to categorize relationship
+ */
+export function categorizePhotoDate(
+  albumDate: Date, 
+  photoDate: Date | null
+): 'correct' | 'futureDate' | 'pastDate' | 'missingExif' {
+  if (!photoDate) {
+    return 'missingExif';
+  }
+
+  if (datesMatch(albumDate, photoDate)) {
+    return 'correct';
+  }
+
+  // Compare dates to see if photo is before or after album date
+  const albumTime = albumDate.getTime();
+  const photoTime = photoDate.getTime();
+
+  if (photoTime > albumTime) {
+    return 'futureDate'; // Photo was taken after the album date
+  } else {
+    return 'pastDate'; // Photo was taken before the album date
+  }
 }
 
 /**
