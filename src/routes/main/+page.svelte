@@ -3,15 +3,15 @@
   import { goto } from '$app/navigation';
   import { fileSystemService } from '$lib/services/fileSystem';
   import { logger } from '$lib/services/logger';
-  import { 
-    parseAlbumDate, 
-    getImageFiles, 
+  import {
+    parseAlbumDate,
+    getImageFiles,
     checkForNestedDirectories,
     isSupportedImageFile,
     datesMatch,
     categorizePhotoDate,
     formatDisplayDate,
-    type Album 
+    type Album
   } from '$lib/services/albums';
   import { readExifData, getBestExifDate } from '$lib/services/exif';
   import { albumStore } from '$lib/stores/albumStore';
@@ -60,17 +60,17 @@
         const parsedDate = parseAlbumDate(folderHandle.name);
         const imageFiles = await getImageFiles(folderHandle.handle);
         const nestedDirs = await checkForNestedDirectories(folderHandle.handle);
-        
+
         // Count supported vs unsupported files
         const supportedFiles = imageFiles.filter(file => isSupportedImageFile(file.name));
         const unsupportedFiles = imageFiles.filter(file => !isSupportedImageFile(file.name));
-        
+
         const warnings: string[] = [];
-        
+
         if (!parsedDate.isValid) {
           warnings.push('Invalid album name format (expected YYYYMMdd)');
         }
-        
+
         if (nestedDirs.length > 0) {
           warnings.push(`Contains nested folders: ${nestedDirs.join(', ')}`);
         }
@@ -78,7 +78,7 @@
         if (unsupportedFiles.length > 0) {
           warnings.push(`${unsupportedFiles.length} unsupported file(s)`);
         }
-        
+
         const album: Album = {
           handle: folderHandle.handle,
           name: folderHandle.name,
@@ -106,9 +106,6 @@
         if (warnings.length > 0) {
           logger.warning(`Album ${folderHandle.name}`, warnings.join('; '));
         }
-
-        // Load thumbnails immediately after the main scan completes
-        // We'll load them all at once but asynchronously
       }
 
       albums.sort((a, b) => {
@@ -119,12 +116,9 @@
       });
 
       logger.success(`Found ${albums.length} albums`);
-      
+
       // Cache the albums data
       albumStore.setAlbums(albums, rootHandle.name);
-      
-      // Album thumbnails removed for performance - only show in detail view
-
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       error = message;
@@ -159,8 +153,6 @@
     return { text: 'OK', color: 'bg-green-100 text-green-800' };
   }
 
-  // Album thumbnail loading removed for performance
-  
   function getRandomSample<T>(array: T[], sampleSize: number): T[] {
     const shuffled = [...array].sort(() => 0.5 - Math.random());
     return shuffled.slice(0, sampleSize);
@@ -168,21 +160,21 @@
 
   function getAlbumBorderColor(album: Album): string {
     // Red border for serious issues
-    if (!album.isValidFormat || 
+    if (!album.isValidFormat ||
         (album.photoStatus && (album.photoStatus.futureDate > 0 || album.photoStatus.pastDate > 0))) {
       return 'border-red-300 hover:border-red-400';
     }
-    
+
     // Yellow border for warnings
-    if (album.hasNestedDirectories || album.unsupportedPhotoCount > 0 || 
+    if (album.hasNestedDirectories || album.unsupportedPhotoCount > 0 ||
         (album.photoStatus && album.photoStatus.missingExif > 0)) {
       return 'border-yellow-300 hover:border-yellow-400';
     }
-    
+
     // Default border
     return 'border-gray-200 hover:border-blue-300';
   }
-  
+
   async function analyzeAlbumExifStatus(album: Album, allFiles: FileSystemFileHandle[]) {
     if (!album.parsedDate) return;
 
@@ -204,7 +196,7 @@
           const exifDate = getBestExifDate(exifData);
 
           const category = categorizePhotoDate(album.parsedDate, exifDate);
-          
+
           switch (category) {
             case 'correct':
               photoStatus.correct++;
@@ -231,14 +223,14 @@
       if (albumIndex !== -1) {
         albums[albumIndex] = { ...albums[albumIndex], photoStatus };
         albums = [...albums]; // Trigger reactivity
-        
+
         // Also update cache
         albumStore.updateAlbum(album.name, { photoStatus });
-        
+
         logger.info(`EXIF analysis for ${album.name} (${photoStatus.totalAnalyzed} photos): ${photoStatus.correct} correct, ${photoStatus.futureDate} future, ${photoStatus.pastDate} past, ${photoStatus.missingExif} missing EXIF`);
       }
     } catch (err) {
-      logger.warning(`Failed to analyze EXIF for ${album.name}`, 
+      logger.warning(`Failed to analyze EXIF for ${album.name}`,
         err instanceof Error ? err.message : 'Unknown error');
     }
   }
@@ -273,9 +265,9 @@
   {:else}
     <div class="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-4">
       {#each albums as album (album.name)}
-        <div 
-          class="border rounded-lg p-4 cursor-pointer transition-colors min-w-0 {getAlbumBorderColor(album)}"
-          onclick={() => goto(`/album/${encodeURIComponent(album.name)}`)}
+        <a
+          class="border rounded-lg p-4 cursor-pointer transition-colors min-w-0 {getAlbumBorderColor(album)} block"
+          href={`/album/${encodeURIComponent(album.name)}`}
         >
           <div class="flex items-start justify-between">
             <div class="flex-1">
@@ -322,7 +314,7 @@
                         {album.photoStatus.totalAnalyzed} photos analyzed
                       </span>
                     </div>
-                    
+
                     <!-- Detailed breakdown -->
                     <div class="text-xs text-gray-600 space-y-1 ml-4">
                       {#if album.photoStatus.correct > 0}
@@ -331,21 +323,21 @@
                           <span>{album.photoStatus.correct} correct dates</span>
                         </div>
                       {/if}
-                      
+
                       {#if album.photoStatus.futureDate > 0}
                         <div class="flex items-center gap-1">
                           <span class="w-1 h-1 bg-orange-500 rounded-full"></span>
                           <span class="text-orange-700">{album.photoStatus.futureDate} photos taken after album date</span>
                         </div>
                       {/if}
-                      
+
                       {#if album.photoStatus.pastDate > 0}
                         <div class="flex items-center gap-1">
                           <span class="w-1 h-1 bg-purple-500 rounded-full"></span>
                           <span class="text-purple-700">{album.photoStatus.pastDate} photos taken before album date</span>
                         </div>
                       {/if}
-                      
+
                       {#if album.photoStatus.missingExif > 0}
                         <div class="flex items-center gap-1">
                           <span class="w-1 h-1 bg-yellow-500 rounded-full"></span>
@@ -375,9 +367,7 @@
               Click to view
             </div>
           </div>
-
-          <!-- Album thumbnails removed for performance -->
-        </div>
+        </a>
       {/each}
     </div>
   {/if}
