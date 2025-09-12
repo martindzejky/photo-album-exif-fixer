@@ -5,17 +5,17 @@
   import { fileSystemService } from '$lib/services/fileSystem';
   import { logger } from '$lib/services/logger';
   import { readExifData, getBestExifDate } from '$lib/services/exif';
-  import { 
-    parseAlbumDate, 
-    getImageFiles, 
+  import {
+    parseAlbumDate,
+    getImageFiles,
     datesMatch,
     isSupportedImageFile,
     formatDisplayDate,
-    type Photo 
+    type Photo
   } from '$lib/services/albums';
 
   const albumName = $page.params.name;
-  
+
   let albumDate: Date | null = $state(null);
   let albumDateString: string = $state('');
   let isValidAlbum: boolean = $state(false);
@@ -51,7 +51,7 @@
 
     try {
       logger.info(`Loading album: ${albumName}`);
-      
+
       // Parse album date
       const parsedDate = parseAlbumDate(albumName);
       albumDate = parsedDate.date;
@@ -65,7 +65,7 @@
       // Get album directory handle
       const rootHandle = fileSystemService.getRootHandle()!;
       albumDirHandle = null;
-      
+
       for await (const [name, entry] of rootHandle.entries()) {
         if (entry.kind === 'directory' && name === albumName) {
           albumDirHandle = entry;
@@ -85,10 +85,10 @@
       for (const fileHandle of imageFiles) {
         try {
           logger.info(`Processing photo: ${fileHandle.name}`);
-          
+
           const file = await fileHandle.getFile();
           const isSupported = isSupportedImageFile(fileHandle.name);
-          
+
           let exifDate: Date | null = null;
           let exifDateString: string | null = null;
           const warnings: string[] = [];
@@ -97,7 +97,7 @@
             try {
               const exifData = await readExifData(file);
               exifDate = getBestExifDate(exifData);
-              
+
               if (exifDate) {
                 exifDateString = formatDisplayDate(exifDate);
               } else {
@@ -105,7 +105,7 @@
               }
             } catch (err) {
               warnings.push('Failed to read EXIF data');
-              logger.warning(`EXIF read failed for ${fileHandle.name}`, 
+              logger.warning(`EXIF read failed for ${fileHandle.name}`,
                 err instanceof Error ? err.message : 'Unknown error');
             }
           } else {
@@ -143,14 +143,14 @@
           }
 
         } catch (err) {
-          logger.error(`Error processing ${fileHandle.name}`, 
+          logger.error(`Error processing ${fileHandle.name}`,
             err instanceof Error ? err.message : 'Unknown error');
         }
       }
 
       // Sort photos by name
       photos.sort((a, b) => a.name.localeCompare(b.name));
-      
+
       logger.success(`Loaded ${photos.length} photos from album ${albumName}`);
 
     } catch (err) {
@@ -207,7 +207,7 @@
     if (!date) return 'Invalid date';
     return date.toLocaleDateString('en-US', {
       year: 'numeric',
-      month: 'long', 
+      month: 'long',
       day: 'numeric'
     });
   }
@@ -216,12 +216,12 @@
     const units = ['B', 'KB', 'MB', 'GB'];
     let size = bytes;
     let unitIndex = 0;
-    
+
     while (size >= 1024 && unitIndex < units.length - 1) {
       size /= 1024;
       unitIndex++;
     }
-    
+
     return `${size.toFixed(unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
   }
 
@@ -236,13 +236,13 @@
 
   function getStatusBadge(status: Photo['status']): { text: string; color: string } {
     switch (status) {
-      case 'correct': 
+      case 'correct':
         return { text: 'Correct', color: 'bg-green-100 text-green-800' };
-      case 'incorrect': 
+      case 'incorrect':
         return { text: 'Incorrect', color: 'bg-red-100 text-red-800' };
-      case 'unsupported': 
+      case 'unsupported':
         return { text: 'Unsupported', color: 'bg-gray-100 text-gray-800' };
-      default: 
+      default:
         return { text: 'Unknown', color: 'bg-yellow-100 text-yellow-800' };
     }
   }
@@ -270,13 +270,13 @@
       </p>
     </div>
     <div class="flex gap-2">
-      <button 
+      <button
         class="px-3 py-1 text-sm rounded bg-gray-100 hover:bg-gray-200"
         onclick={() => goto('/main')}
       >
         ← Back to Albums
       </button>
-      <button 
+      <button
         class="px-3 py-1 text-sm rounded bg-gray-100 hover:bg-gray-200"
         onclick={loadAlbumPhotos}
         disabled={isLoading}
@@ -341,7 +341,7 @@
                 {formatAlbumDate(albumDate)}
               </span>
             </div>
-            
+
             <div>
               <span class="text-gray-500">EXIF date:</span>
               <span class={getStatusColor(photo.status)}>
@@ -358,8 +358,8 @@
 
           {#if photoUrls.has(photo.name)}
             <div class="mt-3 pt-3 border-t border-gray-200">
-              <img 
-                src={photoUrls.get(photo.name)} 
+              <img
+                src={photoUrls.get(photo.name)}
                 alt={photo.name}
                 class="w-full h-auto rounded"
                 loading="lazy"
@@ -367,17 +367,17 @@
             </div>
           {/if}
 
-          <div class="mt-3 pt-3 border-t border-gray-200 flex gap-2">
+          <div class="mt-3 pt-3 border-t border-gray-200 flex justify-end gap-2">
             {#if photo.status === 'incorrect' && photo.isSupported}
-              <button 
-                class="flex-1 px-3 py-1 text-xs rounded bg-blue-600 text-white hover:bg-blue-700"
+              <button
+                class="px-3 py-1 text-xs rounded bg-blue-600 text-white hover:bg-blue-700"
                 onclick={() => {/* TODO: Fix EXIF */}}
               >
                 Fix EXIF Date
               </button>
             {/if}
             <button
-              class="px-3 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700 disabled:opacity-60"
+              class="px-2.5 py-1 text-xs rounded border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-60"
               onclick={() => deletePhoto(photo)}
               disabled={deletingNames.has(photo.name)}
               title="Delete photo"
