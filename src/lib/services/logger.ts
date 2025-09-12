@@ -12,6 +12,7 @@ class LoggerService {
   private logs: LogEntry[] = [];
   private listeners: ((logs: LogEntry[]) => void)[] = [];
   private idCounter = 0;
+  private static readonly MAX_LOGS = 100;
 
   constructor() {
     // Set up global error handler
@@ -47,6 +48,10 @@ class LoggerService {
     };
 
     this.logs.push(entry);
+    if (this.logs.length > LoggerService.MAX_LOGS) {
+      // Keep only the most recent MAX_LOGS entries
+      this.logs = this.logs.slice(-LoggerService.MAX_LOGS);
+    }
     this.notifyListeners();
   }
 
