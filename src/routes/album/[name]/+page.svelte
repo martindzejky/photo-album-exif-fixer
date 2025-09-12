@@ -529,7 +529,7 @@
       No photos found in this album.
     </div>
   {:else}
-    <div class="grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-4">
+    <div class="grid grid-cols-4 gap-4">
       {#each filteredPhotos as photo (photo.name)}
         <div class="border rounded-lg p-4 bg-white">
           <div class="flex items-start justify-between mb-3">

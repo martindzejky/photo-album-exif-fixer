@@ -349,7 +349,7 @@
       No albums found. Make sure your folder contains subdirectories.
     </div>
   {:else}
-    <div class="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-4">
+    <div class="grid grid-cols-4 gap-4">
       {#each filteredAlbums as album (album.name)}
         <a
           class="border rounded-lg p-4 cursor-pointer transition-colors min-w-0 {getAlbumBorderColor(album)} block"
