@@ -1,4 +1,5 @@
 2025-09-12 improve dark mode contrast and readability across app
+
 - album detail: stronger status/badge colors, clearer labels
 - albums list: dark variants for badges/text/diffs
 - landing/select: dark variants for headings/body
