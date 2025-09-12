@@ -130,6 +130,12 @@
     }
   }
 
+  function refreshAlbums() {
+    // Clear cache and force a rescan from disk
+    albumStore.clearCache();
+    scanAlbums();
+  }
+
   function formatAlbumDate(date: Date | null): string {
     if (!date) return 'Invalid date';
     return date.toLocaleDateString('en-US', {
@@ -268,7 +274,7 @@
       </div>
       <button
         class="px-3 py-1 text-sm rounded bg-gray-100 hover:bg-gray-200"
-        onclick={scanAlbums}
+        onclick={refreshAlbums}
         disabled={isLoading}
       >
         {isLoading ? 'Scanning...' : 'Refresh'}

@@ -1,4 +1,5 @@
 2025-09-12: add album list filter (all/problems) and wired into grid render
+2025-09-12: make refresh clear cache and force rescan from disk
 2025-09-11 END: 🎉 MAJOR PROGRESS! comprehensive exif analysis + beautiful date formatting + auto-scroll logs
 2025-09-11: enhanced to analyze ALL photos with detailed categorization (future/past/missing dates)
 2025-09-11: formatted all dates as "October 27, 2004" style throughout app
