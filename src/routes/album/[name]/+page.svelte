@@ -4,6 +4,7 @@
   import { goto } from '$app/navigation';
   import { fileSystemService } from '$lib/services/fileSystem';
   import { logger } from '$lib/services/logger';
+  import { albumStore } from '$lib/stores/albumStore';
   import { readExifData, getBestExifDate } from '$lib/services/exif';
   import {
     parseAlbumDate,
@@ -14,7 +15,7 @@
     type Photo
   } from '$lib/services/albums';
 
-  const albumName = $page.params.name;
+  const albumName = $page.params.name as string;
 
   let albumDate: Date | null = $state(null);
   let albumDateString: string = $state('');
@@ -25,8 +26,12 @@
   let photoUrls: Map<string, string> = $state(new Map());
   let albumDirHandle: FileSystemDirectoryHandle | null = $state(null);
   let deletingNames: Set<string> = $state(new Set());
+  let isDeletingAlbum: boolean = $state(false);
+  let isRenamingAlbum: boolean = $state(false);
+  let showDatePicker: boolean = $state(false);
+  let pendingDate: string = $state('');
 
-  onMount(async () => {
+  onMount(() => {
     const rootHandle = fileSystemService.getRootHandle();
     if (!rootHandle) {
       logger.warning('No folder selected, redirecting to select page');
@@ -34,7 +39,8 @@
       return;
     }
 
-    await loadAlbumPhotos();
+    // Fire and forget
+    loadAlbumPhotos();
 
     // Cleanup object URLs on unmount
     return () => {
@@ -66,6 +72,7 @@
       const rootHandle = fileSystemService.getRootHandle()!;
       albumDirHandle = null;
 
+      // @ts-ignore entries() is available in Chromium's File System Access API
       for await (const [name, entry] of rootHandle.entries()) {
         if (entry.kind === 'directory' && name === albumName) {
           albumDirHandle = entry;
@@ -160,6 +167,105 @@
     } finally {
       isLoading = false;
     }
+  }
+
+  function formatYyyyMmDd(date: Date): string {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}${m}${d}`;
+  }
+
+  async function deleteAlbum() {
+    const rootHandle = fileSystemService.getRootHandle();
+    if (!rootHandle) return;
+    const confirmed = confirm(`Delete album "${albumName}" and all its contents? This cannot be undone.`);
+    if (!confirmed) return;
+    try {
+      isDeletingAlbum = true;
+      albumStore.clearCache();
+      // @ts-ignore recursive supported in Chromium
+      await rootHandle.removeEntry(albumName, { recursive: true });
+      logger.success('Album deleted', albumName);
+      goto('/main');
+    } catch (err) {
+      logger.error('Failed to delete album', err instanceof Error ? err.message : 'Unknown error');
+    } finally {
+      isDeletingAlbum = false;
+    }
+  }
+
+  async function promptRename() {
+    const newName = prompt('New album name:', albumName)?.trim();
+    if (!newName || newName === albumName) return;
+    await renameAlbum(newName);
+  }
+
+  async function renameAlbum(newName: string) {
+    const rootHandle = fileSystemService.getRootHandle();
+    if (!rootHandle || !albumDirHandle) return;
+    try {
+      isRenamingAlbum = true;
+      albumStore.clearCache();
+
+      // Try native move/rename if available
+      const anyHandle: any = albumDirHandle as any;
+      if (typeof anyHandle.move === 'function') {
+        await anyHandle.move(newName);
+      } else if (typeof (rootHandle as any).move === 'function') {
+        await (rootHandle as any).move(albumName, newName);
+      } else {
+        // Fallback: copy all entries to a new dir then delete old
+        const newDir = await rootHandle.getDirectoryHandle(newName, { create: true });
+        // Copy recursively
+        await copyDirectoryRecursive(albumDirHandle, newDir);
+        // Delete old
+        // @ts-ignore recursive supported in Chromium
+        await rootHandle.removeEntry(albumName, { recursive: true });
+      }
+
+      logger.success('Album renamed', `${albumName} → ${newName}`);
+      goto(`/album/${encodeURIComponent(newName)}`);
+    } catch (err) {
+      logger.error('Failed to rename album', err instanceof Error ? err.message : 'Unknown error');
+    } finally {
+      isRenamingAlbum = false;
+    }
+  }
+
+  async function copyDirectoryRecursive(src: FileSystemDirectoryHandle, dest: FileSystemDirectoryHandle) {
+    // @ts-ignore entries() is available in Chromium's File System Access API
+    for await (const [name, entry] of src.entries()) {
+      if (entry.kind === 'file') {
+        try {
+          const file = await entry.getFile();
+          const newFile = await dest.getFileHandle(name, { create: true });
+          const writable = await newFile.createWritable();
+          await writable.write(await file.arrayBuffer());
+          await writable.close();
+        } catch (err) {
+          logger.warning(`Failed to copy file ${name}`, err instanceof Error ? err.message : 'Unknown error');
+        }
+      } else if (entry.kind === 'directory') {
+        const newSub = await dest.getDirectoryHandle(name, { create: true });
+        await copyDirectoryRecursive(entry, newSub);
+      }
+    }
+  }
+
+  function toggleDatePicker() {
+    showDatePicker = !showDatePicker;
+  }
+
+  async function handleDateChange(value: string) {
+    pendingDate = value;
+    if (!value) return;
+    const selected = new Date(value);
+    if (isNaN(selected.getTime())) return;
+    const prefix = formatYyyyMmDd(selected);
+    const rest = albumName.replace(/^\d{8}/, '').replace(/^\s+/, '');
+    const newName = /^\d{8}/.test(albumName) ? `${prefix}${rest}` : `${prefix} ${albumName}`;
+    await renameAlbum(newName);
   }
 
   async function deletePhoto(photo: Photo) {
@@ -271,6 +377,36 @@
     </div>
     <div class="flex gap-2">
       <button
+        class="px-3 py-1 text-sm rounded border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+        onclick={promptRename}
+        disabled={isRenamingAlbum || isDeletingAlbum}
+      >
+        Rename
+      </button>
+      <div class="relative">
+        <button
+          class="px-3 py-1 text-sm rounded border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+          onclick={toggleDatePicker}
+          disabled={isRenamingAlbum || isDeletingAlbum}
+        >
+          Set date
+        </button>
+        {#if showDatePicker}
+          <input
+            type="date"
+            class="absolute right-0 mt-2 px-2 py-1 text-sm border border-gray-300 rounded bg-white shadow"
+            onchange={(e) => handleDateChange((e.target as HTMLInputElement).value)}
+          />
+        {/if}
+      </div>
+      <button
+        class="px-3 py-1 text-sm rounded border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+        onclick={deleteAlbum}
+        disabled={isDeletingAlbum}
+      >
+        {isDeletingAlbum ? 'Deleting…' : 'Delete'}
+      </button>
+      <button
         class="px-3 py-1 text-sm rounded bg-gray-100 hover:bg-gray-200"
         onclick={() => goto('/main')}
       >
@@ -298,8 +434,8 @@
       <div class="flex gap-4 text-xs">
         {#each Object.entries(getStatusCounts()) as [status, count]}
           <div class="flex items-center gap-1">
-            <span class="px-2 py-1 rounded {getStatusBadge(status).color}">
-              {getStatusBadge(status).text}
+            <span class="px-2 py-1 rounded {getStatusBadge(status as 'unknown' | 'correct' | 'incorrect' | 'unsupported').color}">
+              {getStatusBadge(status as 'unknown' | 'correct' | 'incorrect' | 'unsupported').text}
             </span>
             <span>{count}</span>
           </div>

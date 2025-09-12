@@ -256,7 +256,7 @@
   <div class="flex items-center justify-between mb-6">
     <h1 class="text-2xl font-semibold">Albums</h1>
     <div class="flex items-center gap-2">
-      <div class="flex rounded bg-gray-100 p-0.5">
+      <div class="flex rounded bg-gray-100">
         <button
           class="px-3 py-1 text-sm rounded {filterMode === 'all' ? 'bg-white shadow text-gray-900' : 'text-gray-600 hover:text-gray-900'}"
           onclick={() => (filterMode = 'all')}
