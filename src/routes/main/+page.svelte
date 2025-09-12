@@ -379,7 +379,7 @@
             <div class="flex-1">
               <div class="mb-3">
                 <h3 class="font-medium text-base mb-1">{album.name}</h3>
-                <p class="text-sm {album.isValidFormat ? 'text-gray-600' : 'text-red-600'}">
+                <p class="text-sm {album.isValidFormat ? 'text-gray-600 dark:text-gray-300' : 'text-red-600'}">
                   {formatAlbumDate(album.parsedDate)}
                 </p>
               </div>

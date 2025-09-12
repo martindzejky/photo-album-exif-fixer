@@ -422,7 +422,7 @@
   <div class="flex items-center justify-between mb-6">
     <div>
       <h1 class="text-2xl font-semibold">{albumName}</h1>
-      <p class="text-sm {isValidAlbum ? 'text-gray-600' : 'text-red-600'} mt-1">
+      <p class="text-sm {isValidAlbum ? 'text-gray-600 dark:text-gray-300' : 'text-red-600'} mt-1">
         {formatAlbumDate(albumDate)}
         {#if !isValidAlbum}
           (Invalid album name format)
