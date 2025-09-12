@@ -28,7 +28,7 @@
   let deletingNames: Set<string> = $state(new Set());
   let isDeletingAlbum: boolean = $state(false);
   let isRenamingAlbum: boolean = $state(false);
-  let showDatePicker: boolean = $state(false);
+  let showRenamePopup: boolean = $state(false);
   let pendingDate: string = $state('');
 
   onMount(() => {
@@ -195,12 +195,6 @@
     }
   }
 
-  async function promptRename() {
-    const newName = prompt('New album name:', albumName)?.trim();
-    if (!newName || newName === albumName) return;
-    await renameAlbum(newName);
-  }
-
   async function renameAlbum(newName: string) {
     const rootHandle = fileSystemService.getRootHandle();
     if (!rootHandle || !albumDirHandle) return;
@@ -253,19 +247,37 @@
     }
   }
 
-  function toggleDatePicker() {
-    showDatePicker = !showDatePicker;
+  function formatDateForInput(date: Date): string {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
   }
 
-  async function handleDateChange(value: string) {
-    pendingDate = value;
-    if (!value) return;
-    const selected = new Date(value);
+  function toggleRenamePopup() {
+    showRenamePopup = !showRenamePopup;
+    if (showRenamePopup) {
+      if (albumDate) {
+        pendingDate = formatDateForInput(albumDate);
+      } else {
+        pendingDate = '';
+      }
+    }
+  }
+
+  function closeRenamePopup() {
+    showRenamePopup = false;
+  }
+
+  async function confirmRename() {
+    if (!pendingDate) return;
+    const selected = new Date(pendingDate);
     if (isNaN(selected.getTime())) return;
     const prefix = formatYyyyMmDd(selected);
     const rest = albumName.replace(/^\d{8}/, '').replace(/^\s+/, '');
     const newName = /^\d{8}/.test(albumName) ? `${prefix}${rest}` : `${prefix} ${albumName}`;
     await renameAlbum(newName);
+    showRenamePopup = false;
   }
 
   async function deletePhoto(photo: Photo) {
@@ -376,27 +388,39 @@
       </p>
     </div>
     <div class="flex gap-2">
-      <button
-        class="px-3 py-1 text-sm rounded border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-60"
-        onclick={promptRename}
-        disabled={isRenamingAlbum || isDeletingAlbum}
-      >
-        Rename
-      </button>
       <div class="relative">
-        <button
+        <button 
           class="px-3 py-1 text-sm rounded border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-60"
-          onclick={toggleDatePicker}
+          onclick={toggleRenamePopup}
           disabled={isRenamingAlbum || isDeletingAlbum}
         >
-          Set date
+          Rename
         </button>
-        {#if showDatePicker}
-          <input
-            type="date"
-            class="absolute right-0 mt-2 px-2 py-1 text-sm border border-gray-300 rounded bg-white shadow"
-            onchange={(e) => handleDateChange((e.target as HTMLInputElement).value)}
-          />
+        {#if showRenamePopup}
+          <div class="absolute z-10 right-0 mt-2 w-64 p-3 rounded border border-gray-200 bg-white shadow">
+            <label class="block text-xs text-gray-600 mb-1" for="rename-date-input">Album date</label>
+            <input 
+              type="date" 
+              id="rename-date-input"
+              class="w-full px-2 py-1 text-sm border border-gray-300 rounded mb-3"
+              bind:value={pendingDate}
+            />
+            <div class="flex justify-end gap-2">
+              <button 
+                class="px-3 py-1 text-sm rounded border border-gray-300 text-gray-700 hover:bg-gray-50"
+                onclick={closeRenamePopup}
+              >
+                Cancel
+              </button>
+              <button 
+                class="px-3 py-1 text-sm rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60"
+                onclick={confirmRename}
+                disabled={!pendingDate || isRenamingAlbum}
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
         {/if}
       </div>
       <button

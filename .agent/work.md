@@ -1,4 +1,5 @@
 2025-09-12: add album-level actions (delete, rename, set date) in album detail
+2025-09-12: rename flow updated: popup with date, confirm/cancel under the button
 2025-09-12: restyle delete button to subtle and right-align actions
 2025-09-12: add delete photo action with confirmation in album detail
 2025-09-12: make refresh clear cache and force rescan from disk
