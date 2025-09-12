@@ -23,6 +23,8 @@
   let isLoading: boolean = $state(false);
   let error: string = $state('');
   let photoUrls: Map<string, string> = $state(new Map());
+  let albumDirHandle: FileSystemDirectoryHandle | null = $state(null);
+  let deletingNames: Set<string> = $state(new Set());
 
   onMount(async () => {
     const rootHandle = fileSystemService.getRootHandle();
@@ -62,21 +64,21 @@
 
       // Get album directory handle
       const rootHandle = fileSystemService.getRootHandle()!;
-      let albumHandle: FileSystemDirectoryHandle | null = null;
+      albumDirHandle = null;
       
       for await (const [name, entry] of rootHandle.entries()) {
         if (entry.kind === 'directory' && name === albumName) {
-          albumHandle = entry;
+          albumDirHandle = entry;
           break;
         }
       }
 
-      if (!albumHandle) {
+      if (!albumDirHandle) {
         throw new Error(`Album directory not found: ${albumName}`);
       }
 
       // Get image files
-      const imageFiles = await getImageFiles(albumHandle);
+      const imageFiles = await getImageFiles(albumDirHandle);
       logger.info(`Found ${imageFiles.length} image files`);
 
       // Process each photo
@@ -157,6 +159,47 @@
       logger.error('Failed to load album photos', message);
     } finally {
       isLoading = false;
+    }
+  }
+
+  async function deletePhoto(photo: Photo) {
+    if (!albumDirHandle) {
+      logger.error('Failed to delete photo', 'Album handle is missing');
+      return;
+    }
+
+    const confirmed = confirm(`Delete "${photo.name}"? This cannot be undone.`);
+    if (!confirmed) return;
+
+    const nextDeleting = new Set(deletingNames);
+    nextDeleting.add(photo.name);
+    deletingNames = nextDeleting;
+
+    try {
+      logger.warning('Deleting photo', photo.name);
+      // Remove from disk
+      // @ts-ignore - removeEntry may not be in older TS lib.dom
+      await albumDirHandle.removeEntry(photo.name);
+
+      // Cleanup URL if present
+      if (photoUrls.has(photo.name)) {
+        const url = photoUrls.get(photo.name)!;
+        URL.revokeObjectURL(url);
+        const nextMap = new Map(photoUrls);
+        nextMap.delete(photo.name);
+        photoUrls = nextMap;
+      }
+
+      // Update UI list
+      photos = photos.filter(p => p.name !== photo.name);
+
+      logger.success('Photo deleted', photo.name);
+    } catch (err) {
+      logger.error('Failed to delete photo', err instanceof Error ? err.message : 'Unknown error');
+    } finally {
+      const after = new Set(deletingNames);
+      after.delete(photo.name);
+      deletingNames = after;
     }
   }
 
@@ -324,16 +367,24 @@
             </div>
           {/if}
 
-          {#if photo.status === 'incorrect' && photo.isSupported}
-            <div class="mt-3 pt-3 border-t border-gray-200">
+          <div class="mt-3 pt-3 border-t border-gray-200 flex gap-2">
+            {#if photo.status === 'incorrect' && photo.isSupported}
               <button 
-                class="w-full px-3 py-1 text-xs rounded bg-blue-600 text-white hover:bg-blue-700"
+                class="flex-1 px-3 py-1 text-xs rounded bg-blue-600 text-white hover:bg-blue-700"
                 onclick={() => {/* TODO: Fix EXIF */}}
               >
                 Fix EXIF Date
               </button>
-            </div>
-          {/if}
+            {/if}
+            <button
+              class="px-3 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700 disabled:opacity-60"
+              onclick={() => deletePhoto(photo)}
+              disabled={deletingNames.has(photo.name)}
+              title="Delete photo"
+            >
+              {deletingNames.has(photo.name) ? 'Deleting…' : 'Delete'}
+            </button>
+          </div>
         </div>
       {/each}
     </div>
