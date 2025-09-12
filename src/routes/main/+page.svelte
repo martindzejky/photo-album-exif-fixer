@@ -372,7 +372,7 @@
     <div class="grid grid-cols-4 gap-4">
       {#each filteredAlbums as album (album.name)}
         <a
-          class="border rounded-lg p-4 cursor-pointer transition-colors min-w-0 {getAlbumBorderColor(album)} block"
+          class="border rounded-lg p-4 cursor-pointer transition-colors min-w-0 {getAlbumBorderColor(album)} block bg-white dark:bg-gray-800 dark:border-gray-700"
           href={`/album/${encodeURIComponent(album.name)}`}
         >
           <div class="flex items-start justify-between">
@@ -458,7 +458,7 @@
 
               {#if album.warnings.length > 0}
                 <div class="mt-3 pt-2 border-t border-gray-200">
-                  <div class="text-xs text-yellow-700">
+                  <div class="text-xs text-yellow-700 dark:text-yellow-400">
                     ⚠️ {album.warnings.join('; ')}
                   </div>
                 </div>

@@ -432,24 +432,24 @@
     <div class="flex gap-2">
       <div class="relative">
         <button
-          class="px-3 py-1 text-sm rounded border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+          class="px-3 py-1 text-sm rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-60"
           onclick={toggleRenamePopup}
           disabled={isRenamingAlbum || isDeletingAlbum}
         >
           Rename
         </button>
         {#if showRenamePopup}
-          <div class="absolute z-10 right-0 mt-2 w-64 p-3 rounded border border-gray-200 bg-white shadow">
+          <div class="absolute z-10 right-0 mt-2 w-64 p-3 rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 shadow">
             <label class="block text-xs text-gray-600 mb-1" for="rename-date-input">Album date</label>
             <input
               type="date"
               id="rename-date-input"
-              class="w-full px-2 py-1 text-sm border border-gray-300 rounded mb-3"
+              class="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded mb-3"
               bind:value={pendingDate}
             />
             <div class="flex justify-end gap-2">
               <button
-                class="px-3 py-1 text-sm rounded border border-gray-300 text-gray-700 hover:bg-gray-50"
+                class="px-3 py-1 text-sm rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
                 onclick={closeRenamePopup}
               >
                 Cancel
@@ -466,20 +466,20 @@
         {/if}
       </div>
       <button
-        class="px-3 py-1 text-sm rounded border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+        class="px-3 py-1 text-sm rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-60"
         onclick={deleteAlbum}
         disabled={isDeletingAlbum}
       >
         {isDeletingAlbum ? 'Deleting…' : 'Delete'}
       </button>
       <button
-        class="px-3 py-1 text-sm rounded bg-gray-100 hover:bg-gray-200"
+        class="px-3 py-1 text-sm rounded bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700"
         onclick={() => goto('/main')}
       >
         ← Back to Albums
       </button>
       <button
-        class="px-3 py-1 text-sm rounded bg-gray-100 hover:bg-gray-200"
+        class="px-3 py-1 text-sm rounded bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700"
         onclick={loadAlbumPhotos}
         disabled={isLoading}
       >
