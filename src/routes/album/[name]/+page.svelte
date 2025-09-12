@@ -363,6 +363,19 @@
     }
   }
 
+  async function fixAllExifDates() {
+    if (!albumDate) {
+      logger.error('Cannot fix EXIF dates', 'Album date is invalid');
+      return;
+    }
+    const targets = photos.filter(p => p.isSupported);
+    logger.info('Fixing EXIF dates for album', `${albumName} (${targets.length} photos)`);
+    for (const photo of targets) {
+      await fixPhotoExifDate(photo);
+    }
+    logger.success('Finished fixing EXIF dates', `${albumName}`);
+  }
+
   function formatAlbumDate(date: Date | null): string {
     if (!date) return 'Invalid date';
     return date.toLocaleDateString('en-US', {
@@ -479,6 +492,14 @@
         ← Back to Albums
       </button>
       <button
+        class="px-3 py-1 text-sm rounded bg-blue-600 text-white hover:bg-blue-700"
+        onclick={fixAllExifDates}
+        disabled={isLoading}
+        title="Fix EXIF dates of all supported photos"
+      >
+        Fix all EXIF dates
+      </button>
+      <button
         class="px-3 py-1 text-sm rounded bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700"
         onclick={loadAlbumPhotos}
         disabled={isLoading}
@@ -558,6 +579,24 @@
               <span class="text-gray-500">EXIF date:</span>
               <span class={getStatusColor(photo.status)}>
                 {photo.exifDateString || 'No date found'}
+              </span>
+            </div>
+
+            <div>
+              <span class="text-gray-500">Difference:</span>
+              <span class="{photo.exifDate ? (datesMatch(albumDate, photo.exifDate) ? 'text-green-600' : 'text-gray-700') : 'text-yellow-700'}">
+                {#if photo.exifDate && albumDate}
+                  {(() => {
+                    const d1 = new Date(albumDate.getFullYear(), albumDate.getMonth(), albumDate.getDate());
+                    const d2 = new Date(photo.exifDate.getFullYear(), photo.exifDate.getMonth(), photo.exifDate.getDate());
+                    const diff = Math.round((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24));
+                    if (diff === 0) return 'same day';
+                    if (diff > 0) return `${diff} day(s) after`;
+                    return `${Math.abs(diff)} day(s) before`;
+                  })()}
+                {:else}
+                  {photo.exifDate ? 'Album date unknown' : 'Missing EXIF date'}
+                {/if}
               </span>
             </div>
 
