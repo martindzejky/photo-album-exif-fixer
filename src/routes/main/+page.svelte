@@ -168,14 +168,16 @@
 
   function getAlbumBorderColor(album: Album): string {
     // Red border for serious issues
-    if (!album.isValidFormat ||
-        (album.photoStatus && (album.photoStatus.futureDate > 0 || album.photoStatus.pastDate > 0))) {
+    if (!album.isValidFormat || (album.photoStatus && album.photoStatus.severity === 'error')) {
       return 'border-red-300 hover:border-red-400';
     }
 
     // Yellow border for warnings
-    if (album.hasNestedDirectories || album.unsupportedPhotoCount > 0 ||
-        (album.photoStatus && album.photoStatus.missingExif > 0)) {
+    if (
+      album.hasNestedDirectories ||
+      album.unsupportedPhotoCount > 0 ||
+      (album.photoStatus && (album.photoStatus.severity === 'warning' || album.photoStatus.missingExif > 0))
+    ) {
       return 'border-yellow-300 hover:border-yellow-400';
     }
 
@@ -187,22 +189,48 @@
     if (!album.isValidFormat) return true;
     if (album.hasNestedDirectories) return true;
     if (album.unsupportedPhotoCount > 0) return true;
-    if (album.photoStatus && (album.photoStatus.incorrect > 0 || album.photoStatus.missingExif > 0)) return true;
+    if (album.photoStatus && (album.photoStatus.severity !== 'good' || album.photoStatus.missingExif > 0)) return true;
     return false;
+  }
+
+  function getOverallExifDotClass(photoStatus: NonNullable<Album['photoStatus']>): { dot: string; text: string } {
+    if (photoStatus.severity === 'error') {
+      return { dot: 'bg-red-500', text: 'text-red-700' };
+    }
+    if (photoStatus.severity === 'warning' || photoStatus.missingExif > 0) {
+      return { dot: 'bg-yellow-500', text: 'text-yellow-700' };
+    }
+    return { dot: 'bg-green-500', text: 'text-green-700' };
+  }
+
+  function getDiffColor(maxDays: number): string {
+    if (maxDays <= 7) return 'text-green-700';
+    if (maxDays <= 30) return 'text-yellow-700';
+    return 'text-red-700';
   }
 
   async function analyzeAlbumExifStatus(album: Album, allFiles: FileSystemFileHandle[]) {
     if (!album.parsedDate) return;
 
     try {
+      const toDateOnly = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      const daysBetween = (a: Date, b: Date) => {
+        const ms = toDateOnly(a).getTime() - toDateOnly(b).getTime();
+        return Math.round(ms / (1000 * 60 * 60 * 24));
+      };
+
       const photoStatus = {
         correct: 0,
-        incorrect: 0,
-        futureDate: 0,
-        pastDate: 0,
+        earlierCount: 0,
+        laterCount: 0,
         missingExif: 0,
         unsupported: 0,
-        totalAnalyzed: allFiles.length
+        totalAnalyzed: allFiles.length,
+        earliestExifDate: null as Date | null,
+        latestExifDate: null as Date | null,
+        maxEarlierDays: 0,
+        maxLaterDays: 0,
+        severity: 'good' as 'good' | 'warning' | 'error'
       };
 
       for (const fileHandle of allFiles) {
@@ -217,14 +245,28 @@
             case 'correct':
               photoStatus.correct++;
               break;
-            case 'futureDate':
-              photoStatus.futureDate++;
-              photoStatus.incorrect++; // Also count as incorrect
+            case 'futureDate': {
+              if (exifDate) {
+                const diff = daysBetween(exifDate, album.parsedDate);
+                photoStatus.laterCount++;
+                if (!photoStatus.latestExifDate || exifDate > photoStatus.latestExifDate) {
+                  photoStatus.latestExifDate = exifDate;
+                }
+                photoStatus.maxLaterDays = Math.max(photoStatus.maxLaterDays, Math.abs(diff));
+              }
               break;
-            case 'pastDate':
-              photoStatus.pastDate++;
-              photoStatus.incorrect++; // Also count as incorrect
+            }
+            case 'pastDate': {
+              if (exifDate) {
+                const diffAbs = Math.abs(daysBetween(album.parsedDate, exifDate));
+                photoStatus.earlierCount++;
+                if (!photoStatus.earliestExifDate || exifDate < photoStatus.earliestExifDate) {
+                  photoStatus.earliestExifDate = exifDate;
+                }
+                photoStatus.maxEarlierDays = Math.max(photoStatus.maxEarlierDays, diffAbs);
+              }
               break;
+            }
             case 'missingExif':
               photoStatus.missingExif++;
               break;
@@ -232,6 +274,16 @@
         } catch (err) {
           photoStatus.missingExif++;
         }
+      }
+
+      // Determine severity
+      const maxDiff = Math.max(photoStatus.maxEarlierDays, photoStatus.maxLaterDays);
+      if (maxDiff > 30) {
+        photoStatus.severity = 'error';
+      } else if (maxDiff > 7 || photoStatus.missingExif > 0) {
+        photoStatus.severity = 'warning';
+      } else {
+        photoStatus.severity = 'good';
       }
 
       // Update the album in the albums array
@@ -243,7 +295,7 @@
         // Also update cache
         albumStore.updateAlbum(album.name, { photoStatus });
 
-        logger.info(`EXIF analysis for ${album.name} (${photoStatus.totalAnalyzed} photos): ${photoStatus.correct} correct, ${photoStatus.futureDate} future, ${photoStatus.pastDate} past, ${photoStatus.missingExif} missing EXIF`);
+        logger.info(`EXIF analysis for ${album.name} (${photoStatus.totalAnalyzed} photos): ${photoStatus.correct} exact, ${photoStatus.earlierCount} earlier (up to ${photoStatus.maxEarlierDays}d), ${photoStatus.laterCount} later (up to ${photoStatus.maxLaterDays}d), ${photoStatus.missingExif} missing`);
       }
     } catch (err) {
       logger.warning(`Failed to analyze EXIF for ${album.name}`,
@@ -330,52 +382,48 @@
                   </span>
                 </div>
 
-                <!-- Photo counts -->
-                <div class="flex items-center gap-2 text-xs">
-                  <span class="w-2 h-2 rounded-full {album.photoCount > 0 ? 'bg-blue-500' : 'bg-gray-400'}"></span>
-                  <span class="text-gray-700">
-                    {album.photoCount} photos ({album.supportedPhotoCount} supported, {album.unsupportedPhotoCount} unsupported)
-                  </span>
-                </div>
-
                 <!-- EXIF status (if analyzed) -->
                 {#if album.photoStatus}
                   <div class="space-y-1">
                     <!-- Overall status -->
-                    <div class="flex items-center gap-2 text-xs">
-                      <span class="w-2 h-2 rounded-full {album.photoStatus.incorrect > 0 ? 'bg-red-500' : album.photoStatus.missingExif > 0 ? 'bg-yellow-500' : 'bg-green-500'}"></span>
-                      <span class="{album.photoStatus.incorrect > 0 ? 'text-red-700' : album.photoStatus.missingExif > 0 ? 'text-yellow-700' : 'text-green-700'} font-medium">
-                        {album.photoStatus.totalAnalyzed} photos analyzed
-                      </span>
-                    </div>
+                    {#key album.photoStatus}
+                      {#await Promise.resolve(getOverallExifDotClass(album.photoStatus)) then classes}
+                        <div class="flex items-center gap-2 text-xs">
+                          <span class="w-2 h-2 rounded-full {classes.dot}"></span>
+                          <span class="{classes.text} font-medium">
+                            {album.photoStatus.totalAnalyzed} photos analyzed
+                          </span>
+                        </div>
+                      {/await}
+                    {/key}
 
                     <!-- Detailed breakdown -->
                     <div class="text-xs text-gray-600 space-y-1 ml-4">
                       {#if album.photoStatus.correct > 0}
                         <div class="flex items-center gap-1">
                           <span class="w-1 h-1 bg-green-500 rounded-full"></span>
-                          <span>{album.photoStatus.correct} correct dates</span>
+                          <span class="text-green-700">{album.photoStatus.correct} exact dates</span>
                         </div>
                       {/if}
 
-                      {#if album.photoStatus.futureDate > 0}
+                      {#if album.photoStatus.laterCount > 0}
                         <div class="flex items-center gap-1">
                           <span class="w-1 h-1 bg-orange-500 rounded-full"></span>
-                          <span class="text-orange-700">{album.photoStatus.futureDate} photos taken after album date</span>
+                          <span class={getDiffColor(album.photoStatus.maxLaterDays)}>{album.photoStatus.laterCount} photos taken after album date (up to {album.photoStatus.maxLaterDays} days)</span>
                         </div>
                       {/if}
 
-                      {#if album.photoStatus.pastDate > 0}
+                      {#if album.photoStatus.earlierCount > 0}
                         <div class="flex items-center gap-1">
                           <span class="w-1 h-1 bg-purple-500 rounded-full"></span>
-                          <span class="text-purple-700">{album.photoStatus.pastDate} photos taken before album date</span>
+                          <span class={getDiffColor(album.photoStatus.maxEarlierDays)}>{album.photoStatus.earlierCount} photos taken before album date (up to {album.photoStatus.maxEarlierDays} days)</span>
                         </div>
                       {/if}
 
                       {#if album.photoStatus.missingExif > 0}
                         <div class="flex items-center gap-1">
                           <span class="w-1 h-1 bg-yellow-500 rounded-full"></span>
-                          <span class="text-yellow-700">{album.photoStatus.missingExif} missing EXIF dates</span>
+                          <span class="text-yellow-700">{album.photoStatus.missingExif} photos missing date</span>
                         </div>
                       {/if}
                     </div>

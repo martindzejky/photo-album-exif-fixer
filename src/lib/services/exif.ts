@@ -1,6 +1,7 @@
 // EXIF reading and writing service
 
 import exifr from "exifr";
+import piexif from "piexifjs";
 
 export interface ExifData {
   dateTimeOriginal: Date | null;
@@ -149,9 +150,51 @@ export async function writeExifData(
   targetDate: Date
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    // This is where we'd implement the actual EXIF writing
-    // For now, return success as placeholder
-    console.log("Would write EXIF date:", formatExifDate(targetDate));
+    // Only JPEG supported (detect by MIME or filename extension)
+    const file = await fileHandle.getFile();
+    if (!file) {
+      return { success: false, error: "Could not read file from handle" };
+    }
+
+    const name = (fileHandle as any).name as string | undefined;
+    const isJpegByName = !!name && /\.jpe?g$/i.test(name);
+    if (!isJpegByName) {
+      return {
+        success: false,
+        error: "Only JPEG files are supported for EXIF writing",
+      };
+    }
+
+    // Read original bytes
+    const dataUrl = await fileToDataURL(file);
+
+    // Extract existing EXIF, or create a new one
+    let exifObj: any;
+    try {
+      const exifDict = piexif.load(dataUrl);
+      exifObj = exifDict;
+    } catch {
+      exifObj = { "0th": {}, Exif: {}, GPS: {}, Interop: {}, "1st": {} };
+    }
+
+    const formatted = formatExifDate(targetDate);
+
+    // Tags: set all 3 for consistency
+    const exifIFD = exifObj.Exif || (exifObj.Exif = {});
+    const zerothIFD = exifObj["0th"] || (exifObj["0th"] = {});
+
+    exifIFD[piexif.ExifIFD.DateTimeOriginal] = formatted;
+    exifIFD[piexif.ExifIFD.DateTimeDigitized] = formatted; // CreateDate
+    zerothIFD[piexif.ImageIFD.DateTime] = formatted; // ModifyDate equivalent in 0th IFD
+
+    // Insert EXIF back
+    const exifBytes = piexif.dump(exifObj);
+    const newDataUrl = piexif.insert(exifBytes, dataUrl);
+
+    // Write back to the same handle (createWritable overwrites)
+    const writable = await fileHandle.createWritable();
+    await writable.write(binaryStringToUint8Array(newDataUrl));
+    await writable.close();
 
     return { success: true };
   } catch (error) {
@@ -160,4 +203,26 @@ export async function writeExifData(
       error: error instanceof Error ? error.message : "Unknown error",
     };
   }
+}
+
+async function fileToDataURL(file: File): Promise<string> {
+  return await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () =>
+      reject(reader.error || new Error("Failed to read file"));
+    reader.readAsDataURL(file);
+  });
+}
+
+function binaryStringToUint8Array(b64DataUrl: string): Uint8Array {
+  // piexif.insert returns data URL string. We need raw bytes from it
+  const base64 = b64DataUrl.split(",")[1] || "";
+  const binary = atob(base64);
+  const len = binary.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
 }

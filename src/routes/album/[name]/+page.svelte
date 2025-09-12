@@ -6,6 +6,7 @@
   import { logger } from '$lib/services/logger';
   import { albumStore } from '$lib/stores/albumStore';
   import { readExifData, getBestExifDate } from '$lib/services/exif';
+  import { writeExifData, createTargetDate, formatExifDate } from '$lib/services/exif';
   import {
     parseAlbumDate,
     getImageFiles,
@@ -21,6 +22,8 @@
   let albumDateString: string = $state('');
   let isValidAlbum: boolean = $state(false);
   let photos: Photo[] = $state([]);
+  let photoFilter: 'all' | 'correct' | 'incorrect' | 'unknown' | 'unsupported' = $state('all');
+  let filteredPhotos: Photo[] = $derived(photoFilter === 'all' ? photos : photos.filter(p => p.status === photoFilter));
   let isLoading: boolean = $state(false);
   let error: string = $state('');
   let photoUrls: Map<string, string> = $state(new Map());
@@ -321,6 +324,45 @@
     }
   }
 
+  async function fixPhotoExifDate(photo: Photo) {
+    if (!albumDate) {
+      logger.error('Cannot fix EXIF date', 'Album date is invalid');
+      return;
+    }
+    try {
+      logger.info('Preparing to fix EXIF date', photo.name);
+
+      const file = await photo.handle.getFile();
+      const existing = await readExifData(file);
+      const currentBest = getBestExifDate(existing);
+      const target = createTargetDate(albumDate, currentBest);
+
+      logger.info('Writing EXIF date', `${photo.name} → ${formatExifDate(target)}`);
+      const result = await writeExifData(photo.handle, target);
+      if (!result.success) {
+        logger.error('Failed to write EXIF', result.error);
+        return;
+      }
+
+      // Refresh this photo's displayed EXIF date
+      const refreshedFile = await photo.handle.getFile();
+      const refreshedExif = await readExifData(refreshedFile);
+      const newDate = getBestExifDate(refreshedExif);
+
+      const updated: Photo = {
+        ...photo,
+        exifDate: newDate,
+        exifDateString: newDate ? formatDisplayDate(newDate) : null,
+        status: (albumDate && newDate && (albumDate.getFullYear() === newDate.getFullYear() && albumDate.getMonth() === newDate.getMonth() && albumDate.getDate() === newDate.getDate())) ? 'correct' : 'incorrect'
+      };
+      photos = photos.map(p => p.name === photo.name ? updated : p);
+
+      logger.success('EXIF date updated', photo.name);
+    } catch (err) {
+      logger.error('Error fixing EXIF date', err instanceof Error ? err.message : 'Unknown error');
+    }
+  }
+
   function formatAlbumDate(date: Date | null): string {
     if (!date) return 'Invalid date';
     return date.toLocaleDateString('en-US', {
@@ -389,7 +431,7 @@
     </div>
     <div class="flex gap-2">
       <div class="relative">
-        <button 
+        <button
           class="px-3 py-1 text-sm rounded border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-60"
           onclick={toggleRenamePopup}
           disabled={isRenamingAlbum || isDeletingAlbum}
@@ -399,20 +441,20 @@
         {#if showRenamePopup}
           <div class="absolute z-10 right-0 mt-2 w-64 p-3 rounded border border-gray-200 bg-white shadow">
             <label class="block text-xs text-gray-600 mb-1" for="rename-date-input">Album date</label>
-            <input 
-              type="date" 
+            <input
+              type="date"
               id="rename-date-input"
               class="w-full px-2 py-1 text-sm border border-gray-300 rounded mb-3"
               bind:value={pendingDate}
             />
             <div class="flex justify-end gap-2">
-              <button 
+              <button
                 class="px-3 py-1 text-sm rounded border border-gray-300 text-gray-700 hover:bg-gray-50"
                 onclick={closeRenamePopup}
               >
                 Cancel
               </button>
-              <button 
+              <button
                 class="px-3 py-1 text-sm rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60"
                 onclick={confirmRename}
                 disabled={!pendingDate || isRenamingAlbum}
@@ -455,15 +497,25 @@
   {#if !isLoading && photos.length > 0}
     <div class="mb-6 p-4 bg-gray-50 rounded-lg">
       <h3 class="text-sm font-medium mb-2">Status Summary</h3>
-      <div class="flex gap-4 text-xs">
-        {#each Object.entries(getStatusCounts()) as [status, count]}
-          <div class="flex items-center gap-1">
-            <span class="px-2 py-1 rounded {getStatusBadge(status as 'unknown' | 'correct' | 'incorrect' | 'unsupported').color}">
-              {getStatusBadge(status as 'unknown' | 'correct' | 'incorrect' | 'unsupported').text}
-            </span>
-            <span>{count}</span>
-          </div>
-        {/each}
+      <div class="flex gap-4 text-xs items-center justify-between flex-wrap">
+        <div class="flex gap-4">
+          {#each Object.entries(getStatusCounts()) as [status, count]}
+            <div class="flex items-center gap-1">
+              <span class="px-2 py-1 rounded {getStatusBadge(status as 'unknown' | 'correct' | 'incorrect' | 'unsupported').color}">
+                {getStatusBadge(status as 'unknown' | 'correct' | 'incorrect' | 'unsupported').text}
+              </span>
+              <span>{count}</span>
+            </div>
+          {/each}
+        </div>
+
+        <div class="flex rounded bg-white border border-gray-200">
+          <button class="px-2.5 py-1 rounded text-xs {photoFilter === 'all' ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-50'}" onclick={() => (photoFilter = 'all')} aria-pressed={photoFilter === 'all'}>All</button>
+          <button class="px-2.5 py-1 rounded text-xs {photoFilter === 'correct' ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-50'}" onclick={() => (photoFilter = 'correct')} aria-pressed={photoFilter === 'correct'}>Correct</button>
+          <button class="px-2.5 py-1 rounded text-xs {photoFilter === 'incorrect' ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-50'}" onclick={() => (photoFilter = 'incorrect')} aria-pressed={photoFilter === 'incorrect'}>Incorrect</button>
+          <button class="px-2.5 py-1 rounded text-xs {photoFilter === 'unknown' ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-50'}" onclick={() => (photoFilter = 'unknown')} aria-pressed={photoFilter === 'unknown'}>Unknown</button>
+          <button class="px-2.5 py-1 rounded text-xs {photoFilter === 'unsupported' ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-50'}" onclick={() => (photoFilter = 'unsupported')} aria-pressed={photoFilter === 'unsupported'}>Unsupported</button>
+        </div>
       </div>
     </div>
   {/if}
@@ -478,7 +530,7 @@
     </div>
   {:else}
     <div class="grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-4">
-      {#each photos as photo (photo.name)}
+      {#each filteredPhotos as photo (photo.name)}
         <div class="border rounded-lg p-4 bg-white">
           <div class="flex items-start justify-between mb-3">
             <div class="flex-1 min-w-0">
@@ -528,12 +580,12 @@
           {/if}
 
           <div class="mt-3 pt-3 border-t border-gray-200 flex justify-end gap-2">
-            {#if photo.status === 'incorrect' && photo.isSupported}
+            {#if photo.isSupported}
               <button
                 class="px-3 py-1 text-xs rounded bg-blue-600 text-white hover:bg-blue-700"
-                onclick={() => {/* TODO: Fix EXIF */}}
+                onclick={() => fixPhotoExifDate(photo)}
               >
-                Fix EXIF Date
+                {photo.status === 'correct' ? 'Re-write EXIF Date' : 'Fix EXIF Date'}
               </button>
             {/if}
             <button

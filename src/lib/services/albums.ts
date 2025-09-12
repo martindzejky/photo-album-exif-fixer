@@ -12,16 +12,25 @@ export interface Album {
   unsupportedPhotoCount: number;
   hasNestedDirectories: boolean;
   nestedDirectoryNames: string[];
-  status: 'unknown' | 'correct' | 'mixed' | 'incorrect';
+  status: "unknown" | "correct" | "mixed" | "incorrect";
   // Detailed status breakdown (will be populated when photos are analyzed)
   photoStatus?: {
-    correct: number;           // EXIF date matches album date exactly
-    incorrect: number;         // EXIF date doesn't match album date  
-    futureDate: number;        // EXIF date is after album date (photo taken later)
-    pastDate: number;          // EXIF date is before album date (photo taken earlier)
-    missingExif: number;       // No EXIF date found
-    unsupported: number;       // Non-JPG files
-    totalAnalyzed: number;     // Total photos analyzed
+    // Counts
+    correct: number; // Exact date match
+    earlierCount: number; // Taken before album date
+    laterCount: number; // Taken after album date
+    missingExif: number; // No EXIF date found
+    unsupported: number; // Non-supported files
+    totalAnalyzed: number; // Total photos analyzed
+
+    // Extremes & summary
+    earliestExifDate: Date | null; // Earliest detected capture date
+    latestExifDate: Date | null; // Latest detected capture date
+    maxEarlierDays: number; // Max absolute days earlier than album date
+    maxLaterDays: number; // Max absolute days later than album date
+
+    // High-level severity for album based on diffs
+    severity: "good" | "warning" | "error";
   };
 }
 
@@ -33,7 +42,7 @@ export interface Photo {
   isSupported: boolean;
   exifDate: Date | null;
   exifDateString: string | null;
-  status: 'unknown' | 'correct' | 'incorrect' | 'unsupported';
+  status: "unknown" | "correct" | "incorrect" | "unsupported";
   warnings: string[];
 }
 
@@ -47,12 +56,12 @@ export function parseAlbumDate(albumName: string): {
 } {
   // Match YYYYMMdd at the start of the name
   const match = albumName.match(/^(\d{8})/);
-  
+
   if (!match) {
     return {
       date: null,
       dateString: null,
-      isValid: false
+      isValid: false,
     };
   }
 
@@ -63,20 +72,23 @@ export function parseAlbumDate(albumName: string): {
 
   // Validate date components
   if (
-    year < 1900 || year > 2100 ||
-    month < 1 || month > 12 ||
-    day < 1 || day > 31
+    year < 1900 ||
+    year > 2100 ||
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > 31
   ) {
     return {
       date: null,
       dateString,
-      isValid: false
+      isValid: false,
     };
   }
 
   // Try to create a valid date
   const date = new Date(year, month - 1, day);
-  
+
   // Check if the date is valid (handles invalid dates like Feb 30)
   if (
     date.getFullYear() !== year ||
@@ -86,14 +98,14 @@ export function parseAlbumDate(albumName: string): {
     return {
       date: null,
       dateString,
-      isValid: false
+      isValid: false,
     };
   }
 
   return {
     date,
     dateString,
-    isValid: true
+    isValid: true,
   };
 }
 
@@ -102,7 +114,7 @@ export function parseAlbumDate(albumName: string): {
  */
 export function datesMatch(date1: Date | null, date2: Date | null): boolean {
   if (!date1 || !date2) return false;
-  
+
   return (
     date1.getFullYear() === date2.getFullYear() &&
     date1.getMonth() === date2.getMonth() &&
@@ -114,15 +126,15 @@ export function datesMatch(date1: Date | null, date2: Date | null): boolean {
  * Compare photo date with album date to categorize relationship
  */
 export function categorizePhotoDate(
-  albumDate: Date, 
+  albumDate: Date,
   photoDate: Date | null
-): 'correct' | 'futureDate' | 'pastDate' | 'missingExif' {
+): "correct" | "futureDate" | "pastDate" | "missingExif" {
   if (!photoDate) {
-    return 'missingExif';
+    return "missingExif";
   }
 
   if (datesMatch(albumDate, photoDate)) {
-    return 'correct';
+    return "correct";
   }
 
   // Compare dates to see if photo is before or after album date
@@ -130,9 +142,9 @@ export function categorizePhotoDate(
   const photoTime = photoDate.getTime();
 
   if (photoTime > albumTime) {
-    return 'futureDate'; // Photo was taken after the album date
+    return "futureDate"; // Photo was taken after the album date
   } else {
-    return 'pastDate'; // Photo was taken before the album date
+    return "pastDate"; // Photo was taken before the album date
   }
 }
 
@@ -140,10 +152,10 @@ export function categorizePhotoDate(
  * Format date as "Month DD, YYYY" (e.g., "October 27, 2024")
  */
 export function formatDisplayDate(date: Date): string {
-  return date.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
+  return date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
   });
 }
 
@@ -151,7 +163,7 @@ export function formatDisplayDate(date: Date): string {
  * Get supported image file extensions
  */
 export function getSupportedImageExtensions(): string[] {
-  return ['.jpg', '.jpeg', '.JPG', '.JPEG'];
+  return [".jpg", ".jpeg", ".JPG", ".JPEG"];
 }
 
 /**
@@ -159,7 +171,7 @@ export function getSupportedImageExtensions(): string[] {
  */
 export function isSupportedImageFile(filename: string): boolean {
   const supportedExts = getSupportedImageExtensions();
-  return supportedExts.some(ext => filename.endsWith(ext));
+  return supportedExts.some((ext) => filename.endsWith(ext));
 }
 
 /**
@@ -169,25 +181,30 @@ export async function getImageFiles(
   dirHandle: FileSystemDirectoryHandle
 ): Promise<FileSystemFileHandle[]> {
   const imageFiles: FileSystemFileHandle[] = [];
-  
+
   try {
     for await (const [name, entry] of dirHandle.entries()) {
-      if (entry.kind === 'file') {
+      if (entry.kind === "file") {
         // Check if it's an image file (any extension)
         const ext = name.toLowerCase();
         if (
-          ext.endsWith('.jpg') || ext.endsWith('.jpeg') ||
-          ext.endsWith('.png') || ext.endsWith('.gif') ||
-          ext.endsWith('.bmp') || ext.endsWith('.webp') ||
-          ext.endsWith('.heic') || ext.endsWith('.heif') ||
-          ext.endsWith('.tiff') || ext.endsWith('.tif')
+          ext.endsWith(".jpg") ||
+          ext.endsWith(".jpeg") ||
+          ext.endsWith(".png") ||
+          ext.endsWith(".gif") ||
+          ext.endsWith(".bmp") ||
+          ext.endsWith(".webp") ||
+          ext.endsWith(".heic") ||
+          ext.endsWith(".heif") ||
+          ext.endsWith(".tiff") ||
+          ext.endsWith(".tif")
         ) {
           imageFiles.push(entry);
         }
       }
     }
   } catch (error) {
-    console.error('Error reading directory:', error);
+    console.error("Error reading directory:", error);
   }
 
   return imageFiles.sort((a, b) => a.name.localeCompare(b.name));
@@ -200,15 +217,15 @@ export async function checkForNestedDirectories(
   dirHandle: FileSystemDirectoryHandle
 ): Promise<string[]> {
   const nestedDirs: string[] = [];
-  
+
   try {
     for await (const [name, entry] of dirHandle.entries()) {
-      if (entry.kind === 'directory') {
+      if (entry.kind === "directory") {
         nestedDirs.push(name);
       }
     }
   } catch (error) {
-    console.error('Error checking for nested directories:', error);
+    console.error("Error checking for nested directories:", error);
   }
 
   return nestedDirs;
