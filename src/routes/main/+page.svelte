@@ -152,19 +152,19 @@
   }
 
   function getStatusColor(album: Album): string {
-    if (!album.isValidFormat) return 'text-red-600';
-    if (album.warnings.length > 0) return 'text-yellow-600';
-    return 'text-gray-600';
+    if (!album.isValidFormat) return 'text-red-600 dark:text-red-400';
+    if (album.warnings.length > 0) return 'text-yellow-700 dark:text-yellow-400';
+    return 'text-gray-600 dark:text-gray-300';
   }
 
   function getStatusBadge(album: Album): { text: string; color: string } {
     if (!album.isValidFormat) {
-      return { text: 'Invalid', color: 'bg-red-100 text-red-800' };
+      return { text: 'Invalid', color: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300' };
     }
     if (album.warnings.length > 0) {
-      return { text: 'Warning', color: 'bg-yellow-100 text-yellow-800' };
+      return { text: 'Warning', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300' };
     }
-    return { text: 'OK', color: 'bg-green-100 text-green-800' };
+    return { text: 'OK', color: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300' };
   }
 
   function getRandomSample<T>(array: T[], sampleSize: number): T[] {
@@ -222,18 +222,18 @@
 
   function getOverallExifDotClass(photoStatus: NonNullable<Album['photoStatus']>): { dot: string; text: string } {
     if (photoStatus.severity === 'error') {
-      return { dot: 'bg-red-500', text: 'text-red-700' };
+      return { dot: 'bg-red-500', text: 'text-red-700 dark:text-red-400' };
     }
     if (photoStatus.severity === 'warning' || photoStatus.missingExif > 0) {
-      return { dot: 'bg-yellow-500', text: 'text-yellow-700' };
+      return { dot: 'bg-yellow-500', text: 'text-yellow-700 dark:text-yellow-400' };
     }
-    return { dot: 'bg-green-500', text: 'text-green-700' };
+    return { dot: 'bg-green-500', text: 'text-green-700 dark:text-green-400' };
   }
 
   function getDiffColor(maxDays: number): string {
-    if (maxDays <= 7) return 'text-green-700';
-    if (maxDays <= 30) return 'text-yellow-700';
-    return 'text-red-700';
+    if (maxDays <= 7) return 'text-green-700 dark:text-green-400';
+    if (maxDays <= 30) return 'text-yellow-700 dark:text-yellow-400';
+    return 'text-red-700 dark:text-red-400';
   }
 
   async function analyzeAlbumExifStatus(album: Album, allFiles: FileSystemFileHandle[]) {
@@ -372,14 +372,14 @@
     <div class="grid grid-cols-4 gap-4">
       {#each filteredAlbums as album (album.name)}
         <a
-          class="border rounded-lg p-4 cursor-pointer transition-colors min-w-0 {getAlbumBorderColor(album)} block bg-white dark:bg-gray-800 dark:border-gray-700"
+          class="border border-gray-200 rounded-lg p-4 cursor-pointer transition-colors min-w-0 {getAlbumBorderColor(album)} block bg-white dark:bg-gray-800 dark:border-gray-700"
           href={`/album/${encodeURIComponent(album.name)}`}
         >
           <div class="flex items-start justify-between">
             <div class="flex-1">
               <div class="mb-3">
                 <h3 class="font-medium text-base mb-1">{album.name}</h3>
-                <p class="text-sm {album.isValidFormat ? 'text-gray-600 dark:text-gray-300' : 'text-red-600'}">
+                <p class="text-sm {album.isValidFormat ? 'text-gray-600 dark:text-gray-300' : 'text-red-600 dark:text-red-400'}">
                   {formatAlbumDate(album.parsedDate)}
                 </p>
               </div>
@@ -418,7 +418,7 @@
                     {/key}
 
                     <!-- Detailed breakdown -->
-                    <div class="text-xs text-gray-600 space-y-1 ml-4">
+                    <div class="text-xs text-gray-600 dark:text-gray-300 space-y-1 ml-4">
                       {#if album.photoStatus.correct > 0}
                         <div class="flex items-center gap-1">
                           <span class="w-1 h-1 bg-green-500 rounded-full"></span>

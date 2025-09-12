@@ -1,3 +1,9 @@
+2025-09-12 improve dark mode contrast and readability across app
+- album detail: stronger status/badge colors, clearer labels
+- albums list: dark variants for badges/text/diffs
+- landing/select: dark variants for headings/body
+- layout log: toggle and details text contrast
+
 2025-09-12: add album-level actions (delete, rename, set date) in album detail
 2025-09-12: rename flow updated: popup with date, confirm/cancel under the button
 2025-09-12: restyle delete button to subtle and right-align actions

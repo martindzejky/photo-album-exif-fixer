@@ -400,23 +400,23 @@
 
   function getStatusColor(status: Photo['status']): string {
     switch (status) {
-      case 'correct': return 'text-green-600';
-      case 'incorrect': return 'text-red-600';
-      case 'unsupported': return 'text-gray-500';
-      default: return 'text-yellow-600';
+      case 'correct': return 'text-green-600 dark:text-green-400';
+      case 'incorrect': return 'text-red-600 dark:text-red-400';
+      case 'unsupported': return 'text-gray-500 dark:text-gray-400';
+      default: return 'text-yellow-700 dark:text-yellow-400';
     }
   }
 
   function getStatusBadge(status: Photo['status']): { text: string; color: string } {
     switch (status) {
       case 'correct':
-        return { text: 'Correct', color: 'bg-green-100 text-green-800' };
+        return { text: 'Correct', color: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300' };
       case 'incorrect':
-        return { text: 'Incorrect', color: 'bg-red-100 text-red-800' };
+        return { text: 'Incorrect', color: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300' };
       case 'unsupported':
-        return { text: 'Unsupported', color: 'bg-gray-100 text-gray-800' };
+        return { text: 'Unsupported', color: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200' };
       default:
-        return { text: 'Unknown', color: 'bg-yellow-100 text-yellow-800' };
+        return { text: 'Unknown', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300' };
     }
   }
 
@@ -552,13 +552,13 @@
   {:else}
     <div class="grid grid-cols-4 gap-4">
       {#each filteredPhotos as photo (photo.name)}
-        <div class="border rounded-lg p-4 bg-white dark:bg-gray-800 dark:border-gray-700">
+        <div class="border border-gray-200 rounded-lg p-4 bg-white dark:bg-gray-800 dark:border-gray-700">
           <div class="flex items-start justify-between mb-3">
             <div class="flex-1 min-w-0">
               <h3 class="font-medium text-sm truncate" title={photo.name}>
                 {photo.name}
               </h3>
-              <p class="text-xs text-gray-500">
+              <p class="text-xs text-gray-500 dark:text-gray-400">
                 {formatFileSize(photo.size)}
               </p>
             </div>
@@ -569,22 +569,22 @@
 
           <div class="space-y-2 text-xs">
             <div>
-              <span class="text-gray-500">Album date:</span>
-              <span class={isValidAlbum ? 'text-gray-700' : 'text-red-600'}>
+              <span class="text-gray-500 dark:text-gray-400">Album date:</span>
+              <span class={isValidAlbum ? 'text-gray-700 dark:text-gray-200' : 'text-red-600 dark:text-red-400'}>
                 {formatAlbumDate(albumDate)}
               </span>
             </div>
 
             <div>
-              <span class="text-gray-500">EXIF date:</span>
+              <span class="text-gray-500 dark:text-gray-400">EXIF date:</span>
               <span class={getStatusColor(photo.status)}>
                 {photo.exifDateString || 'No date found'}
               </span>
             </div>
 
             <div>
-              <span class="text-gray-500">Difference:</span>
-              <span class="{photo.exifDate ? (datesMatch(albumDate, photo.exifDate) ? 'text-green-600' : 'text-gray-700') : 'text-yellow-700'}">
+              <span class="text-gray-500 dark:text-gray-400">Difference:</span>
+              <span class="{photo.exifDate ? (datesMatch(albumDate, photo.exifDate) ? 'text-green-600 dark:text-green-400' : 'text-gray-700 dark:text-gray-200') : 'text-yellow-700 dark:text-yellow-400'}">
                 {#if photo.exifDate && albumDate}
                   {(() => {
                     const d1 = new Date(albumDate.getFullYear(), albumDate.getMonth(), albumDate.getDate());
@@ -601,7 +601,7 @@
             </div>
 
             {#if photo.warnings.length > 0}
-              <div class="text-yellow-700">
+              <div class="text-yellow-700 dark:text-yellow-400">
                 ⚠️ {photo.warnings.join('; ')}
               </div>
             {/if}

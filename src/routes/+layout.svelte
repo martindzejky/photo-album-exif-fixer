@@ -59,7 +59,7 @@
         <div class="flex items-center justify-between mb-2">
             <h2 class="text-sm font-semibold text-gray-600 dark:text-gray-300">Log</h2>
             <button
-                class="text-xs px-2 py-1 rounded {autoScrollLogs ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-200'} hover:bg-opacity-80 transition-colors"
+                class="text-xs px-2 py-1 rounded {autoScrollLogs ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-200'} hover:bg-opacity-80 transition-colors"
                 onclick={() => autoScrollLogs = !autoScrollLogs}
                 title={autoScrollLogs ? 'Auto-scroll enabled' : 'Auto-scroll disabled'}
             >
@@ -74,7 +74,7 @@
                         <span class={getLogColor(entry.level)}>{entry.message}</span>
                     </div>
                     {#if entry.details}
-                        <div class="text-gray-500 dark:text-gray-400 text-xs ml-14 mt-1">{entry.details}</div>
+                        <div class="text-gray-600 dark:text-gray-300 text-xs ml-14 mt-1">{entry.details}</div>
                     {/if}
                 </div>
             {/each}

@@ -37,11 +37,11 @@
 <!-- Centered layout matching landing page -->
 <div class="min-h-full flex items-center justify-center px-6">
   <div class="max-w-md text-center">
-    <h1 class="text-3xl font-bold text-gray-900 mb-6">
+    <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-6">
       Select Root Folder
     </h1>
 
-    <p class="text-lg text-gray-600 mb-8 leading-relaxed">
+    <p class="text-lg text-gray-600 dark:text-gray-300 mb-8 leading-relaxed">
       Choose the folder containing your photo albums. Each subfolder should
       represent an album with a date in YYYYMMdd format.
     </p>
@@ -60,7 +60,7 @@
       {isSelecting ? 'Selecting folder...' : 'Pick Folder'}
     </button>
 
-    <p class="text-xs text-gray-500 mt-6">
+    <p class="text-xs text-gray-500 dark:text-gray-400 mt-6">
       Works locally in your browser • Requires Chrome or Edge
     </p>
   </div>
