@@ -39,10 +39,10 @@
 
 	function getLogColor(level: LogEntry['level']): string {
 		switch (level) {
-			case 'error': return 'text-red-600';
-			case 'warning': return 'text-yellow-600';
-			case 'success': return 'text-green-600';
-			default: return 'text-gray-700';
+			case 'error': return 'text-red-600 dark:text-red-400';
+			case 'warning': return 'text-yellow-600 dark:text-yellow-300';
+			case 'success': return 'text-green-600 dark:text-green-400';
+			default: return 'text-gray-700 dark:text-gray-200';
 		}
 	}
 </script>

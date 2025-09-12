@@ -335,17 +335,17 @@
   <div class="flex items-center justify-between mb-6">
     <h1 class="text-2xl font-semibold">Albums</h1>
     <div class="flex items-center gap-2">
-      <div class="flex rounded bg-gray-100 flex-wrap">
-        <button class="px-3 py-1 text-sm rounded {filterMode === 'all' ? 'bg-white shadow text-gray-900' : 'text-gray-600 hover:text-gray-900'}" onclick={() => (filterMode = 'all')} aria-pressed={filterMode === 'all'}>All</button>
-        <button class="px-3 py-1 text-sm rounded {filterMode === 'invalidName' ? 'bg-white shadow text-gray-900' : 'text-gray-600 hover:text-gray-900'}" onclick={() => (filterMode = 'invalidName')} aria-pressed={filterMode === 'invalidName'}>Invalid name</button>
-        <button class="px-3 py-1 text-sm rounded {filterMode === 'nestedFolders' ? 'bg-white shadow text-gray-900' : 'text-gray-600 hover:text-gray-900'}" onclick={() => (filterMode = 'nestedFolders')} aria-pressed={filterMode === 'nestedFolders'}>Nested folders</button>
-        <button class="px-3 py-1 text-sm rounded {filterMode === 'exifGood' ? 'bg-white shadow text-gray-900' : 'text-gray-600 hover:text-gray-900'}" onclick={() => (filterMode = 'exifGood')} aria-pressed={filterMode === 'exifGood'}>EXIF good (≤7d)</button>
-        <button class="px-3 py-1 text-sm rounded {filterMode === 'exifWarning' ? 'bg-white shadow text-gray-900' : 'text-gray-600 hover:text-gray-900'}" onclick={() => (filterMode = 'exifWarning')} aria-pressed={filterMode === 'exifWarning'}>EXIF warn (8–30d)</button>
-        <button class="px-3 py-1 text-sm rounded {filterMode === 'exifError' ? 'bg-white shadow text-gray-900' : 'text-gray-600 hover:text-gray-900'}" onclick={() => (filterMode = 'exifError')} aria-pressed={filterMode === 'exifError'}>EXIF error (>30d)</button>
-        <button class="px-3 py-1 text-sm rounded {filterMode === 'exifMissing' ? 'bg-white shadow text-gray-900' : 'text-gray-600 hover:text-gray-900'}" onclick={() => (filterMode = 'exifMissing')} aria-pressed={filterMode === 'exifMissing'}>Missing date</button>
+      <div class="flex rounded bg-gray-100 dark:bg-gray-800 flex-wrap">
+        <button class="px-3 py-1 text-sm rounded {filterMode === 'all' ? 'bg-white dark:bg-gray-700 shadow text-gray-900 dark:text-gray-100' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'}" onclick={() => (filterMode = 'all')} aria-pressed={filterMode === 'all'}>All</button>
+        <button class="px-3 py-1 text-sm rounded {filterMode === 'invalidName' ? 'bg-white dark:bg-gray-700 shadow text-gray-900 dark:text-gray-100' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'}" onclick={() => (filterMode = 'invalidName')} aria-pressed={filterMode === 'invalidName'}>Invalid name</button>
+        <button class="px-3 py-1 text-sm rounded {filterMode === 'nestedFolders' ? 'bg-white dark:bg-gray-700 shadow text-gray-900 dark:text-gray-100' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'}" onclick={() => (filterMode = 'nestedFolders')} aria-pressed={filterMode === 'nestedFolders'}>Nested folders</button>
+        <button class="px-3 py-1 text-sm rounded {filterMode === 'exifGood' ? 'bg-white dark:bg-gray-700 shadow text-gray-900 dark:text-gray-100' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'}" onclick={() => (filterMode = 'exifGood')} aria-pressed={filterMode === 'exifGood'}>EXIF good (≤7d)</button>
+        <button class="px-3 py-1 text-sm rounded {filterMode === 'exifWarning' ? 'bg-white dark:bg-gray-700 shadow text-gray-900 dark:text-gray-100' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'}" onclick={() => (filterMode = 'exifWarning')} aria-pressed={filterMode === 'exifWarning'}>EXIF warn (8–30d)</button>
+        <button class="px-3 py-1 text-sm rounded {filterMode === 'exifError' ? 'bg-white dark:bg-gray-700 shadow text-gray-900 dark:text-gray-100' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'}" onclick={() => (filterMode = 'exifError')} aria-pressed={filterMode === 'exifError'}>EXIF error (>30d)</button>
+        <button class="px-3 py-1 text-sm rounded {filterMode === 'exifMissing' ? 'bg-white dark:bg-gray-700 shadow text-gray-900 dark:text-gray-100' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'}" onclick={() => (filterMode = 'exifMissing')} aria-pressed={filterMode === 'exifMissing'}>Missing date</button>
       </div>
       <button
-        class="px-3 py-1 text-sm rounded bg-gray-100 hover:bg-gray-200"
+        class="px-3 py-1 text-sm rounded bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700"
         onclick={refreshAlbums}
         disabled={isLoading}
       >

@@ -495,7 +495,7 @@
   {/if}
 
   {#if !isLoading && photos.length > 0}
-    <div class="mb-6 p-4 bg-gray-50 rounded-lg">
+    <div class="mb-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
       <h3 class="text-sm font-medium mb-2">Status Summary</h3>
       <div class="flex gap-4 text-xs items-center justify-between flex-wrap">
         <div class="flex gap-4">
@@ -509,12 +509,12 @@
           {/each}
         </div>
 
-        <div class="flex rounded bg-white border border-gray-200">
-          <button class="px-2.5 py-1 rounded text-xs {photoFilter === 'all' ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-50'}" onclick={() => (photoFilter = 'all')} aria-pressed={photoFilter === 'all'}>All</button>
-          <button class="px-2.5 py-1 rounded text-xs {photoFilter === 'correct' ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-50'}" onclick={() => (photoFilter = 'correct')} aria-pressed={photoFilter === 'correct'}>Correct</button>
-          <button class="px-2.5 py-1 rounded text-xs {photoFilter === 'incorrect' ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-50'}" onclick={() => (photoFilter = 'incorrect')} aria-pressed={photoFilter === 'incorrect'}>Incorrect</button>
-          <button class="px-2.5 py-1 rounded text-xs {photoFilter === 'unknown' ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-50'}" onclick={() => (photoFilter = 'unknown')} aria-pressed={photoFilter === 'unknown'}>Unknown</button>
-          <button class="px-2.5 py-1 rounded text-xs {photoFilter === 'unsupported' ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-50'}" onclick={() => (photoFilter = 'unsupported')} aria-pressed={photoFilter === 'unsupported'}>Unsupported</button>
+        <div class="flex rounded bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
+          <button class="px-2.5 py-1 rounded text-xs {photoFilter === 'all' ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600'}" onclick={() => (photoFilter = 'all')} aria-pressed={photoFilter === 'all'}>All</button>
+          <button class="px-2.5 py-1 rounded text-xs {photoFilter === 'correct' ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600'}" onclick={() => (photoFilter = 'correct')} aria-pressed={photoFilter === 'correct'}>Correct</button>
+          <button class="px-2.5 py-1 rounded text-xs {photoFilter === 'incorrect' ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600'}" onclick={() => (photoFilter = 'incorrect')} aria-pressed={photoFilter === 'incorrect'}>Incorrect</button>
+          <button class="px-2.5 py-1 rounded text-xs {photoFilter === 'unknown' ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600'}" onclick={() => (photoFilter = 'unknown')} aria-pressed={photoFilter === 'unknown'}>Unknown</button>
+          <button class="px-2.5 py-1 rounded text-xs {photoFilter === 'unsupported' ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600'}" onclick={() => (photoFilter = 'unsupported')} aria-pressed={photoFilter === 'unsupported'}>Unsupported</button>
         </div>
       </div>
     </div>
@@ -531,7 +531,7 @@
   {:else}
     <div class="grid grid-cols-4 gap-4">
       {#each filteredPhotos as photo (photo.name)}
-        <div class="border rounded-lg p-4 bg-white">
+        <div class="border rounded-lg p-4 bg-white dark:bg-gray-800 dark:border-gray-700">
           <div class="flex items-start justify-between mb-3">
             <div class="flex-1 min-w-0">
               <h3 class="font-medium text-sm truncate" title={photo.name}>
@@ -569,7 +569,7 @@
           </div>
 
           {#if photoUrls.has(photo.name)}
-            <div class="mt-3 pt-3 border-t border-gray-200">
+            <div class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
               <img
                 src={photoUrls.get(photo.name)}
                 alt={photo.name}
@@ -579,7 +579,7 @@
             </div>
           {/if}
 
-          <div class="mt-3 pt-3 border-t border-gray-200 flex justify-end gap-2">
+          <div class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2">
             {#if photo.isSupported}
               <button
                 class="px-3 py-1 text-xs rounded bg-blue-600 text-white hover:bg-blue-700"
@@ -589,7 +589,7 @@
               </button>
             {/if}
             <button
-              class="px-2.5 py-1 text-xs rounded border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+              class="px-2.5 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-60"
               onclick={() => deletePhoto(photo)}
               disabled={deletingNames.has(photo.name)}
               title="Delete photo"
