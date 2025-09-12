@@ -17,6 +17,8 @@
   import { albumStore } from '$lib/stores/albumStore';
 
   let albums: Album[] = $state([]);
+  let filterMode: 'all' | 'problems' = $state('all');
+  let filteredAlbums: Album[] = $derived(filterMode === 'all' ? albums : albums.filter(hasProblems));
   let isLoading = $state(false);
   let error = $state('');
 
@@ -175,6 +177,14 @@
     return 'border-gray-200 hover:border-blue-300';
   }
 
+  function hasProblems(album: Album): boolean {
+    if (!album.isValidFormat) return true;
+    if (album.hasNestedDirectories) return true;
+    if (album.unsupportedPhotoCount > 0) return true;
+    if (album.photoStatus && (album.photoStatus.incorrect > 0 || album.photoStatus.missingExif > 0)) return true;
+    return false;
+  }
+
   async function analyzeAlbumExifStatus(album: Album, allFiles: FileSystemFileHandle[]) {
     if (!album.parsedDate) return;
 
@@ -239,13 +249,31 @@
 <div class="w-full">
   <div class="flex items-center justify-between mb-6">
     <h1 class="text-2xl font-semibold">Albums</h1>
-    <button
-      class="px-3 py-1 text-sm rounded bg-gray-100 hover:bg-gray-200"
-      onclick={scanAlbums}
-      disabled={isLoading}
-    >
-      {isLoading ? 'Scanning...' : 'Refresh'}
-    </button>
+    <div class="flex items-center gap-2">
+      <div class="flex rounded bg-gray-100 p-0.5">
+        <button
+          class="px-3 py-1 text-sm rounded {filterMode === 'all' ? 'bg-white shadow text-gray-900' : 'text-gray-600 hover:text-gray-900'}"
+          onclick={() => (filterMode = 'all')}
+          aria-pressed={filterMode === 'all'}
+        >
+          All
+        </button>
+        <button
+          class="px-3 py-1 text-sm rounded {filterMode === 'problems' ? 'bg-white shadow text-gray-900' : 'text-gray-600 hover:text-gray-900'}"
+          onclick={() => (filterMode = 'problems')}
+          aria-pressed={filterMode === 'problems'}
+        >
+          Problems
+        </button>
+      </div>
+      <button
+        class="px-3 py-1 text-sm rounded bg-gray-100 hover:bg-gray-200"
+        onclick={scanAlbums}
+        disabled={isLoading}
+      >
+        {isLoading ? 'Scanning...' : 'Refresh'}
+      </button>
+    </div>
   </div>
 
   {#if error}
@@ -264,7 +292,7 @@
     </div>
   {:else}
     <div class="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-4">
-      {#each albums as album (album.name)}
+      {#each filteredAlbums as album (album.name)}
         <a
           class="border rounded-lg p-4 cursor-pointer transition-colors min-w-0 {getAlbumBorderColor(album)} block"
           href={`/album/${encodeURIComponent(album.name)}`}
